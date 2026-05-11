@@ -1,0 +1,9 @@
+const r = require('express').Router();
+const c = require('../controllers/registro.controller');
+const { authenticate, requireRole } = require('../middleware/auth.middleware');
+r.use(authenticate);
+r.get('/',                     requireRole('supervisor'), c.listar);
+r.get('/:id',                  requireRole('operador'),   c.buscar);
+r.post('/',                    requireRole('operador'),   c.criar);
+r.patch('/:protocolo/saida',   requireRole('operador'),   c.saida);
+module.exports = r;
