@@ -75,15 +75,26 @@ exports.listar = async (req, res, next) => {
     const skip = (Number(page)-1)*Number(limit);
     const where = {};
     if (status) where.status = status;
-    if (busca) where.OR = [
-      { protocolo:     { contains: busca, mode:'insensitive' } },
-      { nomeMotorista: { contains: busca, mode:'insensitive' } },
-      { placa:         { contains: busca, mode:'insensitive' } }
-    ];
+    if (busca) {
+      if (typeof busca !== 'string' || busca.length > 100)
+        return res.status(400).json({ error: 'Busca inválida' });
+      const term = busca.trim();
+      where.OR = [
+        { protocolo:     { contains: term, mode:'insensitive' } },
+        { nomeMotorista: { contains: term, mode:'insensitive' } },
+        { placa:         { contains: term, mode:'insensitive' } }
+      ];
+    }
     if (dataInicio||dataFim) {
-      where.dataEntrada = {};
-      if (dataInicio) where.dataEntrada.gte = new Date(dataInicio);
-      if (dataFim)    where.dataEntrada.lte = new Date(dataFim);
+      const inicio = dataInicio ? new Date(dataInicio) : null
+      const fim    = dataFim    ? new Date(dataFim)    : null
+      if ((inicio && isNaN(inicio)) || (fim && isNaN(fim)))
+        return res.status(400).json({ error: 'Data inválida' })
+      if (inicio && fim && inicio > fim)
+        return res.status(400).json({ error: 'Data início não pode ser maior que data fim' })
+      where.dataEntrada = {}
+      if (inicio) where.dataEntrada.gte = inicio
+      if (fim)    where.dataEntrada.lte = fim
     }
     const [registros, total] = await Promise.all([
       prisma.registro.findMany({ where, skip, take: Number(limit),

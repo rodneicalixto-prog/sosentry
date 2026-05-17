@@ -1,20 +1,22 @@
-const CACHE = 'sosentry-v1'
+// Versão muda a cada deploy para invalidar cache automaticamente
+const BUILD = '__BUILD_VERSION__'
+const CACHE = `sosentry-${BUILD}`
 
 const STATIC = [
-  '/',
   '/index.html',
   '/manifest.json',
 ]
 
-// Instala o SW e pré-cacheia os estáticos
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(STATIC))
+    caches.open(CACHE).then((c) =>
+      // allSettled: falha em 1 arquivo não impede instalação dos outros
+      Promise.allSettled(STATIC.map(url => c.add(url)))
+    )
   )
   self.skipWaiting()
 })
 
-// Remove caches antigos ao ativar nova versão
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
@@ -28,30 +30,42 @@ self.addEventListener('fetch', (e) => {
   const { request } = e
   const url = new URL(request.url)
 
-  // Requisições de API: sempre vai para a rede (nunca cacheia)
+  // API: sempre rede, nunca cacheia
   if (url.pathname.startsWith('/api/')) return
 
-  // Recursos estáticos: cache-first
-  if (request.method === 'GET') {
+  if (request.method !== 'GET') return
+
+  // HTML: network-first para garantir versão atualizada
+  if (request.mode === 'navigate' || url.pathname.endsWith('.html')) {
     e.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached
-        return fetch(request).then((res) => {
-          // Só cacheia recursos do próprio domínio
-          if (res.ok && url.origin === self.location.origin) {
+      fetch(request)
+        .then((res) => {
+          if (res.ok) {
             const clone = res.clone()
             caches.open(CACHE).then((c) => c.put(request, clone))
           }
           return res
         })
-      }).catch(() => {
-        // Offline: retorna o shell da SPA para rotas de navegação
-        if (request.mode === 'navigate') {
-          return caches.match('/index.html')
-        }
-      })
+        .catch(() => caches.match('/index.html'))
     )
+    return
   }
+
+  // Demais assets: cache-first
+  e.respondWith(
+    caches.match(request).then((cached) => {
+      if (cached) return cached
+      return fetch(request).then((res) => {
+        if (res.ok && url.origin === self.location.origin) {
+          const clone = res.clone()
+          caches.open(CACHE).then((c) => c.put(request, clone))
+        }
+        return res
+      })
+    }).catch(() => {
+      if (request.mode === 'navigate') return caches.match('/index.html')
+    })
+  )
 })
 
 // Push notifications

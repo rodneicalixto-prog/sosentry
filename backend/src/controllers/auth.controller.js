@@ -39,8 +39,14 @@ exports.refresh = async (req, res, next) => {
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user || !user.ativo) return res.status(401).json({ error: 'Usuário inativo' });
     const { access, refresh } = tokens(user.id, user.role);
-    await prisma.session.update({ where: { id: session.id },
-      data: { refreshToken: refresh, expiresAt: new Date(Date.now()+7*24*60*60*1000) } });
+    // Rotation: invalida token antigo e cria novo atomicamente
+    await prisma.$transaction([
+      prisma.session.delete({ where: { id: session.id } }),
+      prisma.session.create({
+        data: { userId: user.id, refreshToken: refresh,
+                expiresAt: new Date(Date.now()+7*24*60*60*1000), ip: req.ip }
+      })
+    ]);
     res.json({ accessToken: access, refreshToken: refresh });
   } catch(e){ next(e); }
 };

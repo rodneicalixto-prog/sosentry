@@ -5,25 +5,45 @@ const http = require('http');
 
 const prisma = new PrismaClient();
 
+// IPs/hostnames internos bloqueados para prevenir SSRF
+const BLOQUEADOS = ['127.0.0.1', 'localhost', '0.0.0.0', '::1', '::ffff:127.0.0.1']
+
+function validarUrl(url) {
+  let parsed
+  try { parsed = new URL(url) } catch { throw new Error('URL inválida') }
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Protocolo não permitido')
+  if (BLOQUEADOS.includes(parsed.hostname)) throw new Error('URL aponta para rede interna')
+  // Bloqueia intervalos de IP privado por prefixo
+  const h = parsed.hostname
+  if (/^10\./.test(h) || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h))
+    throw new Error('URL aponta para rede privada')
+  return parsed
+}
+
 function assinar(payload, secret) {
   return 'sha256=' + crypto.createHmac('sha256', secret).update(payload).digest('hex');
 }
 
 function postar(url, body, headers) {
   return new Promise((resolve, reject) => {
-    const mod = url.startsWith('https') ? https : http;
-    const parsed = new URL(url);
+    const parsed = validarUrl(url)
+    const mod = parsed.protocol === 'https:' ? https : http;
     const data = typeof body === 'string' ? body : JSON.stringify(body);
     const req = mod.request({
       hostname: parsed.hostname,
-      port: parsed.port || (url.startsWith('https') ? 443 : 80),
+      port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
       path: parsed.pathname + parsed.search,
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data), ...headers },
       timeout: 10000,
     }, res => {
       let raw = '';
-      res.on('data', chunk => raw += chunk);
+      let size = 0;
+      res.on('data', chunk => {
+        size += chunk.length
+        if (size > 512 * 1024) { req.destroy(); return reject(new Error('Resposta muito grande')) }
+        raw += chunk
+      });
       res.on('end', () => resolve({ status: res.statusCode, body: raw }));
     });
     req.on('error', reject);
@@ -31,6 +51,23 @@ function postar(url, body, headers) {
     req.write(data);
     req.end();
   });
+}
+
+// Máximo de 5 disparos simultâneos
+let emFlight = 0
+const queue = []
+function enqueue(fn) {
+  return new Promise((resolve, reject) => {
+    queue.push({ fn, resolve, reject })
+    drain()
+  })
+}
+function drain() {
+  while (emFlight < 5 && queue.length) {
+    const { fn, resolve, reject } = queue.shift()
+    emFlight++
+    fn().then(resolve, reject).finally(() => { emFlight--; drain() })
+  }
 }
 
 async function disparar(evento, dados) {
@@ -51,9 +88,9 @@ async function disparar(evento, dados) {
     const headers = { 'X-SOS-Event': evento, 'X-SOS-Webhook-Id': wh.id };
     if (wh.secret) headers['X-SOS-Signature'] = assinar(payload, wh.secret);
 
-    postar(wh.url, payload, headers)
-      .then(r => console.log(`[webhook] ${wh.nome} → ${wh.url} status=${r.status}`))
-      .catch(e => console.error(`[webhook] ${wh.nome} → ${wh.url} erro: ${e.message}`));
+    enqueue(() => postar(wh.url, payload, headers))
+      .then(r => console.log(`[webhook] ${wh.nome} status=${r.status}`))
+      .catch(e => console.error(`[webhook] ${wh.nome} erro: ${e.message}`));
   }
 }
 

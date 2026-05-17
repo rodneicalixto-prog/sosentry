@@ -27,7 +27,19 @@ export function useRealtime(onEvento, onConectado) {
 
     es.onerror = () => {
       cbConectado.current?.(false)
-      // EventSource reconecta automaticamente
+      // Verificar se o token expirou para não reconectar infinitamente com token inválido
+      try {
+        const t = localStorage.getItem('accessToken')
+        if (t) {
+          const { exp } = JSON.parse(atob(t.split('.')[1]))
+          if (exp * 1000 < Date.now()) {
+            es.close()
+            localStorage.removeItem('accessToken')
+            localStorage.removeItem('refreshToken')
+            window.location.href = '/login'
+          }
+        }
+      } catch { /* token malformado — deixa reconectar normalmente */ }
     }
 
     return () => {
