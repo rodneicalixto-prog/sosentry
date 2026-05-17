@@ -40,6 +40,9 @@ exports.atualizar = async (req, res, next) => {
     if (!alvo) return res.status(404).json({ error: 'Usuário não encontrado' });
     if (HIER.indexOf(alvo.role) >= HIER.indexOf(req.user.role) && alvo.id !== req.user.id)
       return res.status(403).json({ error: 'Sem permissão' });
+    // Bloqueia edição de usuário desativado (exceto para reativar via campo ativo)
+    if (!alvo.ativo && alvo.id !== req.user.id && req.body.ativo !== true)
+      return res.status(400).json({ error: 'Usuário está desativado. Reative-o primeiro.' });
     const { nome, email, role, turno, telefone, ativo, senha } = req.body;
     const data = {};
     if (nome)     data.nome     = nome;
