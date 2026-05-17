@@ -96,6 +96,11 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: message });
 });
 
+// Garante que o valor 'na_fila' existe no enum StatusRegistro antes de aceitar conexões
+prisma.$executeRaw`ALTER TYPE "StatusRegistro" ADD VALUE IF NOT EXISTS 'na_fila'`
+  .then(() => console.log('[startup] enum na_fila: ok'))
+  .catch(e => console.warn('[startup] enum na_fila (ignorado):', e.message));
+
 const server = app.listen(process.env.PORT || 3001, () =>
   console.log(`SOS Entry API rodando na porta ${process.env.PORT || 3001}`)
 );
