@@ -45,11 +45,17 @@ exports.criar = async (req, res, next) => {
     const portaria = await prisma.portaria.findUnique({ where: { id: d.portariaId } });
     if (!portaria) return res.status(404).json({ error: 'Portaria não encontrada' });
 
+    // Valida e normaliza placa (padrão ABC-1234 ou Mercosul ABC1D23)
+    const placaNorm = d.placa.toUpperCase().replace(/[^A-Z0-9]/g, '')
+    if (!/^[A-Z]{3}\d{4}$/.test(placaNorm) && !/^[A-Z]{3}\d[A-Z]\d{2}$/.test(placaNorm))
+      return res.status(400).json({ error: 'Placa inválida (use ABC-1234 ou ABC1D23)' })
+    const placa = `${placaNorm.slice(0, 3)}-${placaNorm.slice(3)}`
+
     const dtEntrada = new Date(`${d.dataEntrada}T${d.horaEntrada||'00:00'}:00`);
     const dados = {
       portariaId: d.portariaId, operadorEntradaId: req.user.id,
       nomeMotorista: d.nome, cpfMotorista: d.cpf, telefoneMotorista: d.telefone,
-      placa: d.placa.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^([A-Z]{3})(\d.*)$/, '$1-$2'),
+      placa,
       tipoVeiculo: d.tipoVeiculo, empresa: d.empresa||null, notaFiscal: d.notaFiscal||null,
       tipoOperacao: d.tipoOperacao, tipoMaterial: d.tipoMaterial||null,
       obsMaterial: d.obsMaterial||null, obsGeral: d.obsGeral||null,

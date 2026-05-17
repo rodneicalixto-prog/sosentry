@@ -103,7 +103,7 @@ async function disparar(evento, dados) {
     return;
   }
 
-  const ativos = webhooks.filter(wh => wh.eventos.includes(evento));
+  const ativos = webhooks.filter(wh => wh.ativo && wh.eventos?.length && wh.eventos.includes(evento));
   if (!ativos.length) return;
 
   const payload = JSON.stringify({ evento, ts: new Date().toISOString(), dados });

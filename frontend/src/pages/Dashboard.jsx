@@ -78,6 +78,7 @@ export default function Dashboard() {
     if (notificacoes.length === 0) return
     clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => fetchData(), 1500)
+    return () => clearTimeout(debounceRef.current)
   }, [notificacoes.length, fetchData])
 
   useEffect(() => {

@@ -20,6 +20,10 @@ exports.criar = async (req, res, next) => {
       return res.status(403).json({ error: 'Não é possível criar perfil igual ou superior ao seu' });
     const existe = await prisma.user.findUnique({ where: { login: login.toLowerCase() } });
     if (existe) return res.status(409).json({ error: 'Login já em uso' });
+    if (email) {
+      const emailExiste = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+      if (emailExiste) return res.status(409).json({ error: 'E-mail já em uso' });
+    }
     const user = await prisma.user.create({ data: {
       nome, login: login.toLowerCase().trim(), email: email||null,
       passwordHash: await bcrypt.hash(senha, 12),

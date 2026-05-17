@@ -32,7 +32,7 @@ export default function Registros() {
 
   const LIMIT = 15
 
-  const fetchRegistros = useCallback(async (pg = page) => {
+  const fetchRegistros = useCallback(async (pg = 1) => {
     setLoading(true)
     setError('')
     try {
@@ -51,7 +51,7 @@ export default function Registros() {
     } finally {
       setLoading(false)
     }
-  }, [busca, status, dataInicio, dataFim, page])
+  }, [busca, status, dataInicio, dataFim])
 
   useEffect(() => {
     fetchRegistros(1)

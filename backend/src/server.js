@@ -50,7 +50,11 @@ app.use('/api/registros', rateLimit({ windowMs: 60*60*1000, max: 200, skip: (req
 app.use((req, res, next) => {
   if (['POST','PATCH','DELETE','PUT'].includes(req.method)) {
     const origin = req.headers.origin
-    if (origin && origin !== process.env.FRONTEND_URL) {
+    const allowedOrigin = process.env.FRONTEND_URL
+    if (origin && !allowedOrigin) {
+      return res.status(403).json({ error: 'Servidor não configurado (FRONTEND_URL ausente)' })
+    }
+    if (origin && allowedOrigin && origin !== allowedOrigin) {
       return res.status(403).json({ error: 'Origem não permitida' })
     }
   }

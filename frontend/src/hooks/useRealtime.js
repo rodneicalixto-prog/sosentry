@@ -39,7 +39,7 @@ export function useRealtime(onEvento, onConectado) {
             window.location.href = '/login'
           }
         }
-      } catch { /* token malformado — deixa reconectar normalmente */ }
+      } catch (e) { console.warn('[useRealtime] Falha ao verificar expiração do token:', e.message) }
     }
 
     return () => {

@@ -84,14 +84,10 @@ export default function NovaEntrada() {
     setServerError('')
     setSuccess('')
     try {
-      const payload = { ...formData }
+      const payload = { ...formData, temAjudante }
       if (!temAjudante) {
-        delete payload.nomeAjudante
-        delete payload.cpfAjudante
-        delete payload.telefoneAjudante
-        delete payload.rgAjudante
+        ;['nomeAjudante', 'cpfAjudante', 'telefoneAjudante', 'rgAjudante'].forEach(k => delete payload[k])
       }
-      payload.temAjudante = temAjudante
 
       const { data } = await api.post('/api/registros', payload)
       setSuccess(`Entrada registrada com sucesso! Protocolo: ${data.protocolo || data.id}`)

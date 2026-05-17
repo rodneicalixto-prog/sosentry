@@ -11,6 +11,9 @@ async function authenticate(req, res, next) {
       : req.query.token;
     if (!raw) return res.status(401).json({ error: 'Não autenticado' });
     const payload = jwt.verify(raw, process.env.JWT_SECRET);
+    if (!payload.sub || typeof payload.sub !== 'string') {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
       select: { id:true, nome:true, login:true, role:true, ativo:true }
