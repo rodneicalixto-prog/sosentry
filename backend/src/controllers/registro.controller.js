@@ -28,18 +28,23 @@ function validarTelefone(tel) {
 exports.criar = async (req, res, next) => {
   try {
     const d = req.body;
-    // Aceita tanto nomeMotorista (frontend) quanto nome (legado)
-    const nome     = d.nomeMotorista || d.nome
-    const cpf      = d.cpfMotorista  || d.cpf
-    const telefone = d.telefoneMotorista || d.telefone
-    // Ajudante: aceita nomeAjudante (frontend) ou ajudanteNome (legado)
-    const ajNome = d.nomeAjudante || d.ajudanteNome || null
-    const ajCpf  = d.cpfAjudante  || d.ajudanteCpf  || null
-    const ajTel  = d.telefoneAjudante || d.ajudanteTelefone || null
-    const ajRg   = d.rgAjudante   || d.ajudanteRg   || null
+    const nome     = d.nomeMotorista
+    const cpf      = d.cpfMotorista
+    const telefone = d.telefoneMotorista || null
+    const ajNome   = d.nomeAjudante      || null
+    const ajCpf    = d.cpfAjudante       || null
+    const ajTel    = d.telefoneAjudante  || null
+    const ajRg     = d.rgAjudante        || null
 
-    const obrigatorios = { portariaId: d.portariaId, nomeMotorista: nome, cpfMotorista: cpf, placa: d.placa, tipoVeiculo: d.tipoVeiculo, tipoOperacao: d.tipoOperacao }
-    const ausentes = Object.entries(obrigatorios).filter(([, v]) => !v).map(([k]) => k)
+    const camposObrigatorios = {
+      'Portaria': d.portariaId,
+      'Nome do motorista': nome,
+      'CPF do motorista': cpf,
+      'Placa': d.placa,
+      'Tipo de veículo': d.tipoVeiculo,
+      'Tipo de operação': d.tipoOperacao,
+    }
+    const ausentes = Object.entries(camposObrigatorios).filter(([, v]) => !v).map(([k]) => k)
     if (ausentes.length) return res.status(400).json({ error: `Campos obrigatórios ausentes: ${ausentes.join(', ')}` })
     if (nome.length > 150) return res.status(400).json({ error: 'Nome muito longo' })
     if (d.empresa?.length > 150) return res.status(400).json({ error: 'Empresa muito longa' })
@@ -62,9 +67,9 @@ exports.criar = async (req, res, next) => {
       return res.status(400).json({ error: 'Placa inválida (use ABC-1234 ou ABC1D23)' })
     const placa = `${placaNorm.slice(0, 3)}-${placaNorm.slice(3)}`
 
-    // dataEntrada: usa o valor enviado ou o momento atual
+    // dataEntrada: usa o valor enviado (forçando UTC) ou o momento atual
     const dtEntrada = d.dataEntrada
-      ? new Date(`${d.dataEntrada}T${d.horaEntrada||'00:00'}:00`)
+      ? new Date(`${d.dataEntrada}T${d.horaEntrada||'00:00'}:00Z`)
       : new Date()
     const dados = {
       portariaId: d.portariaId, operadorEntradaId: req.user.id,
@@ -100,10 +105,10 @@ exports.criar = async (req, res, next) => {
       empresa: registro.empresa, portaria: registro.portaria?.nome,
       tipoVeiculo: registro.tipoVeiculo, operador: req.user.nome
     });
-    await prisma.auditLog.create({ data: {
+    prisma.auditLog.create({ data: {
       userId: req.user.id, acao: 'CRIAR_REGISTRO',
       entidade: 'registro', entidadeId: registro.id, detalhes: { protocolo: registro.protocolo }
-    }});
+    }}).catch(e => console.warn('[audit] Falha ao gravar log:', e.message));
     res.status(201).json({ protocolo: registro.protocolo, registro });
   } catch(e){ next(e); }
 };

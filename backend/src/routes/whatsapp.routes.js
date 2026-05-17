@@ -20,8 +20,13 @@ async function evoFetch(path, opts = {}) {
   if (!url) throw Object.assign(new Error('Evolution API não configurada (EVOLUTION_API_URL ausente)'), { status: 503 });
   const res = await fetch(`${url}${path}`, {
     ...opts,
+    signal: AbortSignal.timeout(10000),
     headers: { 'apikey': key, 'Content-Type': 'application/json', ...(opts.headers || {}) }
   });
+  const ct = res.headers.get('content-type') || '';
+  if (!res.ok && !ct.includes('json')) {
+    throw Object.assign(new Error(`Evolution API retornou ${res.status}`), { status: res.status >= 500 ? 502 : res.status });
+  }
   return res;
 }
 

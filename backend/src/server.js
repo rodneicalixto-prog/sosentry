@@ -95,6 +95,16 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: message });
 });
 
-app.listen(process.env.PORT || 3001, () =>
+const server = app.listen(process.env.PORT || 3001, () =>
   console.log(`SOS Entry API rodando na porta ${process.env.PORT || 3001}`)
 );
+
+function shutdown(signal) {
+  console.log(`[shutdown] ${signal} recebido — encerrando servidor`);
+  server.close(() => {
+    prisma.$disconnect().finally(() => process.exit(0));
+  });
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT',  () => shutdown('SIGINT'));
