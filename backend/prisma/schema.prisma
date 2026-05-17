@@ -2,8 +2,9 @@ generator client {
   provider = "prisma-client-js"
 }
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 enum Role {
   superadmin
@@ -82,6 +83,8 @@ model Registro {
   ajudanteTelefone  String?        @map("ajudante_telefone")
   ajudanteRg        String?        @map("ajudante_rg")
   dataEntrada       DateTime       @map("data_entrada")
+  lacre             String?
+  obsOcorrencia     String?        @map("obs_ocorrencia")
   horaSaida         DateTime?      @map("hora_saida")
   fotoUrl           String?        @map("foto_url")
   fotoThumbUrl      String?        @map("foto_thumb_url")
@@ -96,6 +99,19 @@ model Registro {
   @@index([status])
   @@map("registros")
 }
+model Webhook {
+  id        String   @id @default(uuid())
+  nome      String
+  url       String
+  eventos   String[]
+  ativo     Boolean  @default(true)
+  secret    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  @@map("webhooks")
+}
+
 model AuditLog {
   id         String   @id @default(uuid())
   userId     String   @map("user_id")

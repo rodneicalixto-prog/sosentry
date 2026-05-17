@@ -5,9 +5,12 @@ const HIERARCHY = ['operador','supervisor','admin','superadmin'];
 
 async function authenticate(req, res, next) {
   try {
-    const h = req.headers.authorization;
-    if (!h?.startsWith('Bearer ')) return res.status(401).json({ error: 'Não autenticado' });
-    const payload = jwt.verify(h.split(' ')[1], process.env.JWT_SECRET);
+    // Suporta token via header (padrão) ou query param ?token= (necessário para EventSource/SSE)
+    const raw = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.split(' ')[1]
+      : req.query.token;
+    if (!raw) return res.status(401).json({ error: 'Não autenticado' });
+    const payload = jwt.verify(raw, process.env.JWT_SECRET);
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
       select: { id:true, nome:true, login:true, role:true, ativo:true }

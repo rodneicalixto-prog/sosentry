@@ -1,6 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const evo = require('../services/evolution.service');
+const webhookSvc = require('../services/webhook.service');
+const sseSvc = require('../services/sse.service');
 
 function gerarProtocolo(num) {
   const now = new Date(), pad = n => String(n).padStart(2,'0');
@@ -27,6 +29,12 @@ exports.criar = async (req, res, next) => {
       dataEntrada: dtEntrada
     }, include: { portaria:true, operadorEntrada:{ select:{ nome:true, turno:true } } } });
     evo.enviarEntrada(registro).catch(e => console.error('Evo erro:', e.message));
+    webhookSvc.disparar('entrada', registro).catch(e => console.error('Webhook entrada erro:', e.message));
+    sseSvc.broadcast('entrada', {
+      protocolo, placa: registro.placa, nomeMotorista: registro.nomeMotorista,
+      empresa: registro.empresa, portaria: registro.portaria?.nome, tipoVeiculo: registro.tipoVeiculo,
+      operador: req.user.nome
+    });
     await prisma.auditLog.create({ data:{ userId: req.user.id, acao:'CRIAR_REGISTRO',
       entidade:'registro', entidadeId: registro.id, detalhes:{ protocolo, placa: d.placa } } });
     res.status(201).json({ protocolo, registro });
@@ -36,13 +44,28 @@ exports.criar = async (req, res, next) => {
 exports.saida = async (req, res, next) => {
   try {
     const { protocolo } = req.params;
+    const { lacre, obsOcorrencia } = req.body || {};
     const reg = await prisma.registro.findUnique({ where:{ protocolo } });
     if (!reg) return res.status(404).json({ error: 'Protocolo não encontrado' });
     if (reg.status === 'saiu') return res.status(400).json({ error: 'Saída já registrada' });
-    const updated = await prisma.registro.update({ where:{ protocolo },
-      data:{ horaSaida: new Date(), status:'saiu', operadorSaidaId: req.user.id } });
+    const updated = await prisma.registro.update({
+      where: { protocolo },
+      data: {
+        horaSaida: new Date(),
+        status: 'saiu',
+        operadorSaidaId: req.user.id,
+        ...(lacre        && { lacre }),
+        ...(obsOcorrencia && { obsOcorrencia }),
+      },
+      include: { portaria: true, operadorEntrada: { select: { nome: true } }, operadorSaida: { select: { nome: true } } }
+    });
     evo.enviarSaida(updated).catch(e => console.error('Evo saída erro:', e.message));
-    res.json({ ok: true, horaSaida: updated.horaSaida });
+    webhookSvc.disparar('saida', updated).catch(e => console.error('Webhook saída erro:', e.message));
+    sseSvc.broadcast('saida', {
+      protocolo, placa: updated.placa, nomeMotorista: updated.nomeMotorista,
+      empresa: updated.empresa, lacre: updated.lacre, operador: req.user.nome
+    });
+    res.json(updated);
   } catch(e){ next(e); }
 };
 
