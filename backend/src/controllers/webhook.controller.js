@@ -62,10 +62,12 @@ exports.testar = async (req, res, next) => {
   try {
     const wh = await prisma.webhook.findUnique({ where: { id: req.params.id } });
     if (!wh) return res.status(404).json({ error: 'Webhook não encontrado' });
-    await disparar(wh.eventos[0] || 'entrada', {
+    if (!wh.eventos.length) return res.status(400).json({ error: 'Webhook sem eventos configurados' });
+    const evento = wh.eventos[0]
+    await disparar(evento, {
       _teste: true, protocolo: 'PRT1-TEST-0000', nomeMotorista: 'Motorista Teste',
       placa: 'TST-0000', empresa: 'Empresa Teste', status: 'na_empresa'
     });
-    res.json({ ok: true, mensagem: 'Evento de teste disparado' });
+    res.json({ ok: true, mensagem: `Evento '${evento}' disparado` });
   } catch (e) { next(e); }
 };

@@ -59,6 +59,7 @@ function SaidaModal({ registro, onSave, onCancel }) {
           <div className="bg-gray-50 rounded-xl p-3 text-sm space-y-1">
             <p className="font-semibold text-gray-900">{registro.nomeMotorista}</p>
             <p className="text-gray-500">{registro.placa} · {registro.tipoVeiculo} · {registro.empresa || 'sem empresa'}</p>
+            <p className="text-xs text-gray-400 mt-1">Entrada: {new Date(registro.dataEntrada).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}</p>
           </div>
 
           {erro && (
@@ -73,6 +74,7 @@ function SaidaModal({ registro, onSave, onCancel }) {
             <input
               className={inp}
               placeholder="Número do lacre (opcional)"
+              maxLength={50}
               value={lacre}
               onChange={e => setLacre(e.target.value)}
             />
@@ -86,6 +88,7 @@ function SaidaModal({ registro, onSave, onCancel }) {
             <textarea
               className={inp + ' resize-none h-28'}
               placeholder="Registre observações, ocorrências ou irregularidades na saída..."
+              maxLength={2000}
               value={obsOcorrencia}
               onChange={e => setObsOcorrencia(e.target.value)}
             />

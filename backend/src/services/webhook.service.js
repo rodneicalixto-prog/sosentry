@@ -75,15 +75,23 @@ function drain() {
 }
 
 async function postarComRetry(url, payload, headers, tentativa = 1) {
+  let r
   try {
-    return await postar(url, payload, headers)
+    r = await postar(url, payload, headers)
   } catch (e) {
+    // Erro de rede ou timeout — retenta
     if (tentativa < 3) {
-      await new Promise(r => setTimeout(r, Math.pow(2, tentativa) * 1000))
+      await new Promise(res => setTimeout(res, Math.pow(2, tentativa) * 1000))
       return postarComRetry(url, payload, headers, tentativa + 1)
     }
     throw e
   }
+  // Retenta apenas em 5xx (erros do servidor receptor), não em 4xx (erro do payload)
+  if (r.status >= 500 && tentativa < 3) {
+    await new Promise(res => setTimeout(res, Math.pow(2, tentativa) * 1000))
+    return postarComRetry(url, payload, headers, tentativa + 1)
+  }
+  return r
 }
 
 async function disparar(evento, dados) {

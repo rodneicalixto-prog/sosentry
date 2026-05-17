@@ -1,5 +1,8 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const r = express.Router();
+
+const sendLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, message: { error: 'Limite de envio atingido. Aguarde.' } });
 
 const EVO_URL = process.env.EVOLUTION_API_URL;
 const EVO_KEY = process.env.EVOLUTION_API_KEY;
@@ -29,7 +32,7 @@ r.get('/qrcode', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-r.post('/send', async (req, res) => {
+r.post('/send', sendLimiter, async (req, res) => {
   try {
     const { number, text } = req.body;
     if (!number || !/^\d{10,15}$/.test(String(number).replace(/\D/g, '')))

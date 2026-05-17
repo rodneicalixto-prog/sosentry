@@ -29,8 +29,11 @@ async function enviarEntrada(reg) {
     `📦 ${reg.tipoOperacao}\n⏰ ${hora}\n` +
     `🔐 Op: ${reg.operadorEntrada?.nome||'-'}`;
   await Promise.allSettled([
-    send(reg.telefoneMotorista, msg),
-    RESP ? send(RESP, resp) : Promise.resolve()
+    send(reg.telefoneMotorista, msg)
+      .catch(e => console.error(`[evo] motorista ${reg.telefoneMotorista}: ${e.message}`)),
+    RESP
+      ? send(RESP, resp).catch(e => console.error(`[evo] responsável ${RESP}: ${e.message}`))
+      : Promise.resolve()
   ]);
 }
 

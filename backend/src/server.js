@@ -17,8 +17,19 @@ setInterval(async () => {
     const { count } = await prisma.session.deleteMany({ where: { expiresAt: { lt: new Date() } } });
     if (count > 0) console.log(`[session-cleanup] ${count} sessão(ões) expirada(s) removida(s)`);
   } catch (e) { console.error('[session-cleanup] Erro:', e.message); }
-}, 6 * 60 * 60 * 1000);
-app.use(helmet());
+}, 6 * 60 * 60 * 1000).unref();
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc:  ["'self'", "'unsafe-inline'"],
+      styleSrc:   ["'self'", "'unsafe-inline'"],
+      imgSrc:     ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'"],
+    }
+  }
+}));
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 // Morgan sem expor o token JWT passado via ?token= (SSE)
 app.use(morgan((tokens, req, res) => {

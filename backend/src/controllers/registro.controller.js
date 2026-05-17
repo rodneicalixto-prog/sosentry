@@ -20,6 +20,11 @@ function validarCPF(cpf) {
   return Number(d[10]) === (s * 10) % 11 % 10
 }
 
+function validarTelefone(tel) {
+  const d = tel.replace(/\D/g, '')
+  return d.length >= 10 && d.length <= 15
+}
+
 exports.criar = async (req, res, next) => {
   try {
     const d = req.body;
@@ -28,7 +33,14 @@ exports.criar = async (req, res, next) => {
     if (ausentes.length) return res.status(400).json({ error: `Campos obrigatórios ausentes: ${ausentes.join(', ')}` })
     if (d.nome.length > 150) return res.status(400).json({ error: 'Nome muito longo' })
     if (d.empresa?.length > 150) return res.status(400).json({ error: 'Empresa muito longa' })
+    if (d.notaFiscal?.length > 50) return res.status(400).json({ error: 'Nota fiscal muito longa (máx 50 chars)' })
+    if (d.tipoMaterial?.length > 100) return res.status(400).json({ error: 'Tipo de material muito longo (máx 100 chars)' })
+    if (d.obsMaterial?.length > 500) return res.status(400).json({ error: 'Observação de material muito longa (máx 500 chars)' })
+    if (d.obsGeral?.length > 2000) return res.status(400).json({ error: 'Observação geral muito longa (máx 2000 chars)' })
     if (!validarCPF(d.cpf)) return res.status(400).json({ error: 'CPF inválido' })
+    if (d.ajudanteCpf && !validarCPF(d.ajudanteCpf)) return res.status(400).json({ error: 'CPF do ajudante inválido' })
+    if (d.telefone && !validarTelefone(d.telefone)) return res.status(400).json({ error: 'Telefone do motorista inválido (10–15 dígitos)' })
+    if (d.ajudanteTelefone && !validarTelefone(d.ajudanteTelefone)) return res.status(400).json({ error: 'Telefone do ajudante inválido (10–15 dígitos)' })
 
     const portaria = await prisma.portaria.findUnique({ where: { id: d.portariaId } });
     if (!portaria) return res.status(404).json({ error: 'Portaria não encontrada' });
@@ -83,18 +95,30 @@ exports.saida = async (req, res, next) => {
     const { lacre, obsOcorrencia } = req.body || {};
     if (lacre?.length > 50) return res.status(400).json({ error: 'Lacre muito longo (máx 50 chars)' })
     if (obsOcorrencia?.length > 2000) return res.status(400).json({ error: 'Observação muito longa (máx 2000 chars)' })
-    const reg = await prisma.registro.findUnique({ where:{ protocolo } });
-    if (!reg) return res.status(404).json({ error: 'Protocolo não encontrado' });
-    if (reg.status === 'saiu') return res.status(400).json({ error: 'Saída já registrada' });
-    const updated = await prisma.registro.update({
-      where: { protocolo },
-      data: {
-        horaSaida: new Date(), status: 'saiu', operadorSaidaId: req.user.id,
-        ...(lacre         && { lacre }),
-        ...(obsOcorrencia && { obsOcorrencia }),
-      },
-      include: { portaria: true, operadorEntrada: { select: { nome: true } }, operadorSaida: { select: { nome: true } } }
-    });
+
+    // $transaction garante atomicidade — evita race condition de dois operadores
+    // registrando saída simultânea para o mesmo protocolo
+    let updated
+    try {
+      updated = await prisma.$transaction(async (tx) => {
+        const atual = await tx.registro.findUnique({ where: { protocolo } })
+        if (!atual) throw Object.assign(new Error('Protocolo não encontrado'), { _status: 404 })
+        if (atual.status === 'saiu') throw Object.assign(new Error('Saída já registrada'), { _status: 400 })
+        return tx.registro.update({
+          where: { protocolo },
+          data: {
+            horaSaida: new Date(), status: 'saiu', operadorSaidaId: req.user.id,
+            ...(lacre         && { lacre }),
+            ...(obsOcorrencia && { obsOcorrencia }),
+          },
+          include: { portaria: true, operadorEntrada: { select: { nome: true } }, operadorSaida: { select: { nome: true } } }
+        })
+      })
+    } catch (e) {
+      if (e._status) return res.status(e._status).json({ error: e.message })
+      throw e
+    }
+
     evo.enviarSaida(updated).catch(e => console.error('Evo saída erro:', e.message));
     webhookSvc.disparar('saida', updated).catch(e => console.error('Webhook saída erro:', e.message));
     sseSvc.broadcast('saida', {
@@ -107,8 +131,9 @@ exports.saida = async (req, res, next) => {
 
 exports.listar = async (req, res, next) => {
   try {
-    const { page=1, limit=20, status, busca, dataInicio, dataFim } = req.query;
-    const skip = (Number(page)-1)*Number(limit);
+    const { page=1, status, busca, dataInicio, dataFim } = req.query;
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100)
+    const skip = (Number(page)-1)*limit;
     const where = {};
     if (status) where.status = status;
     if (busca) {
@@ -133,14 +158,14 @@ exports.listar = async (req, res, next) => {
       if (fim)    where.dataEntrada.lte = fim
     }
     const [registros, total] = await Promise.all([
-      prisma.registro.findMany({ where, skip, take: Number(limit),
+      prisma.registro.findMany({ where, skip, take: limit,
         orderBy:{ dataEntrada:'desc' },
         include:{ portaria:{ select:{nome:true,numero:true} },
                   operadorEntrada:{ select:{nome:true} },
                   operadorSaida:{ select:{nome:true} } } }),
       prisma.registro.count({ where })
     ]);
-    res.json({ registros, total, page: Number(page), totalPages: Math.ceil(total/Number(limit)) });
+    res.json({ registros, total, page: Number(page), totalPages: Math.ceil(total/limit) });
   } catch(e){ next(e); }
 };
 

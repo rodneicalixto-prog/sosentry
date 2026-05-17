@@ -48,7 +48,10 @@ exports.atualizar = async (req, res, next) => {
     const updated = await prisma.user.update({ where:{ id }, data,
       select:{ id:true,nome:true,login:true,role:true,turno:true,ativo:true } });
     res.json(updated);
-  } catch(e){ next(e); }
+  } catch(e){
+    if (e.code === 'P2002') return res.status(409).json({ error: 'Login ou e-mail já em uso' })
+    next(e);
+  }
 };
 
 exports.desativar = async (req, res, next) => {

@@ -287,6 +287,7 @@ export default function NovaEntrada() {
                 type="text"
                 className="input"
                 placeholder="Número da NF"
+                maxLength={50}
                 {...register('notaFiscal')}
               />
             </div>
@@ -318,6 +319,7 @@ export default function NovaEntrada() {
                 type="text"
                 className="input"
                 placeholder="Tipo do material transportado"
+                maxLength={100}
                 {...register('tipoMaterial')}
               />
             </div>
@@ -331,6 +333,7 @@ export default function NovaEntrada() {
                 type="text"
                 className="input"
                 placeholder="Detalhes sobre o material"
+                maxLength={500}
                 {...register('obsMaterial')}
               />
             </div>
@@ -344,6 +347,7 @@ export default function NovaEntrada() {
                 rows={3}
                 className="input resize-none"
                 placeholder="Informações adicionais…"
+                maxLength={2000}
                 {...register('obsGeral')}
               />
             </div>
