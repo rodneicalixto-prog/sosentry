@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { RealtimeProvider } from './contexts/RealtimeContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 
@@ -18,6 +19,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+      <RealtimeProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
 
@@ -77,6 +79,7 @@ export default function App() {
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+      </RealtimeProvider>
       </AuthProvider>
     </BrowserRouter>
   )

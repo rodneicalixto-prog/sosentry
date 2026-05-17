@@ -20,6 +20,7 @@ app.use('/api/portarias', require('./routes/portaria.routes'));
 app.use('/api/dashboard', require('./routes/dashboard.routes'));
 app.use('/api/whatsapp',  require('./routes/whatsapp.routes'));
 app.use('/api/webhooks', require('./routes/webhook.routes'));
+app.use('/api/eventos',  require('./routes/eventos.routes'));
 
 app.get('/health', (_, res) => res.json({ ok: true, app: 'SOS Entry', ts: new Date() }));
 

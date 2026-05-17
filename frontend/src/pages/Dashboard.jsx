@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Users, LogIn, LogOut, BarChart2, PlusCircle, RefreshCw } from 'lucide-react'
 import api from '../api/client'
 import StatusBadge from '../components/StatusBadge'
+import { useRealtimeCtx } from '../contexts/RealtimeContext'
 
 function formatDateTime(iso) {
   if (!iso) return '—'
@@ -41,8 +42,9 @@ export default function Dashboard() {
   const [registros, setRegistros] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const { notificacoes } = useRealtimeCtx()
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -57,7 +59,12 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  // Atualiza dados automaticamente quando chega evento em tempo real
+  useEffect(() => {
+    if (notificacoes.length > 0) fetchData()
+  }, [notificacoes.length, fetchData])
 
   useEffect(() => {
     fetchData()
