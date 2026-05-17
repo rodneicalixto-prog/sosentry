@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Users, LogIn, LogOut, BarChart2, PlusCircle, RefreshCw } from 'lucide-react'
+import { Users, LogIn, LogOut, BarChart2, PlusCircle, RefreshCw, Clock } from 'lucide-react'
 import api from '../api/client'
 import StatusBadge from '../components/StatusBadge'
 import { useRealtimeCtx } from '../contexts/RealtimeContext'
@@ -116,7 +116,13 @@ export default function Dashboard() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
+        <StatCard
+          icon={Clock}
+          label="Na Fila"
+          value={resumo ? resumo.naFila : null}
+          color="bg-yellow-500"
+        />
         <StatCard
           icon={Users}
           label="Na Empresa"

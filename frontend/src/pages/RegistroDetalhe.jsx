@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft, LogOut, AlertCircle, CheckCircle, Tag, AlertTriangle, X } from 'lucide-react'
+import { ChevronLeft, LogOut, LogIn, AlertCircle, CheckCircle, Tag, AlertTriangle, X } from 'lucide-react'
 import api from '../api/client'
 import StatusBadge from '../components/StatusBadge'
 
@@ -118,6 +118,7 @@ export default function RegistroDetalhe() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showSaida, setShowSaida] = useState(false)
+  const [autorizando, setAutorizando] = useState(false)
   const [success, setSuccess] = useState('')
 
   useEffect(() => {
@@ -127,6 +128,21 @@ export default function RegistroDetalhe() {
       .catch(() => setError('Registro não encontrado ou erro ao carregar.'))
       .finally(() => setLoading(false))
   }, [id])
+
+  async function handleAutorizar() {
+    if (!confirm('Confirmar autorização de entrada do veículo?')) return
+    setAutorizando(true)
+    try {
+      const { data } = await api.patch(`/api/registros/${registro.protocolo}/entrada`)
+      setRegistro(data)
+      setSuccess('Entrada autorizada com sucesso!')
+    } catch (err) {
+      setSuccess('')
+      alert(err?.response?.data?.error || 'Erro ao autorizar entrada.')
+    } finally {
+      setAutorizando(false)
+    }
+  }
 
   function handleSaidaSalva(atualizado) {
     setRegistro(atualizado)
@@ -180,6 +196,12 @@ export default function RegistroDetalhe() {
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <StatusBadge status={registro.status} />
+          {registro.status === 'na_fila' && (
+            <button onClick={handleAutorizar} disabled={autorizando} className="btn-accent">
+              <LogIn className="w-4 h-4" />
+              {autorizando ? 'Autorizando...' : 'Autorizar Entrada'}
+            </button>
+          )}
           {registro.status === 'na_empresa' && (
             <button onClick={() => setShowSaida(true)} className="btn-primary">
               <LogOut className="w-4 h-4" /> Registrar Saída
@@ -198,9 +220,10 @@ export default function RegistroDetalhe() {
       <div className="card p-5">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Datas e Portaria</h2>
         <dl className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <Detail label="Portaria" value={registro.portaria?.nome} />
-          <Detail label="Entrada" value={formatDateTime(registro.dataEntrada)} />
-          <Detail label="Saída" value={formatDateTime(registro.horaSaida)} />
+          <Detail label="Portaria"              value={registro.portaria?.nome} />
+          <Detail label="Chegada (Fila)"        value={formatDateTime(registro.dataEntrada)} />
+          <Detail label="Entrada Autorizada"    value={formatDateTime(registro.horaEntrada)} />
+          <Detail label="Saída"                 value={formatDateTime(registro.horaSaida)} />
           {registro.operadorEntrada && <Detail label="Operador Entrada" value={registro.operadorEntrada?.nome} />}
           {registro.operadorSaida  && <Detail label="Operador Saída"   value={registro.operadorSaida?.nome} />}
         </dl>

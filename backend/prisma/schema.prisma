@@ -14,6 +14,7 @@ enum Role {
   operador
 }
 enum StatusRegistro {
+  na_fila
   na_empresa
   saiu
   cancelado
@@ -86,12 +87,13 @@ model Registro {
   ajudanteTelefone  String?        @map("ajudante_telefone")
   ajudanteRg        String?        @map("ajudante_rg")
   dataEntrada       DateTime       @map("data_entrada")
+  horaEntrada       DateTime?      @map("hora_entrada")
   lacre             String?
   obsOcorrencia     String?        @map("obs_ocorrencia")
   horaSaida         DateTime?      @map("hora_saida")
   fotoUrl           String?        @map("foto_url")
   fotoThumbUrl      String?        @map("foto_thumb_url")
-  status            StatusRegistro @default(na_empresa)
+  status            StatusRegistro @default(na_fila)
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
   portaria        Portaria @relation(fields: [portariaId], references: [id])

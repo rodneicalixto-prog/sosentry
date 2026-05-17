@@ -114,6 +114,34 @@ exports.criar = async (req, res, next) => {
   } catch(e){ next(e); }
 };
 
+exports.autorizar = async (req, res, next) => {
+  try {
+    const { protocolo } = req.params;
+    let updated;
+    try {
+      updated = await prisma.$transaction(async (tx) => {
+        const atual = await tx.registro.findUnique({ where: { protocolo } });
+        if (!atual) throw Object.assign(new Error('Protocolo não encontrado'), { _status: 404 });
+        if (atual.status !== 'na_fila') throw Object.assign(new Error('Registro não está na fila'), { _status: 400 });
+        return tx.registro.update({
+          where: { protocolo },
+          data: { horaEntrada: new Date(), status: 'na_empresa' },
+          include: { portaria: true, operadorEntrada: { select: { nome: true } } }
+        });
+      });
+    } catch (e) {
+      if (e._status) return res.status(e._status).json({ error: e.message });
+      throw e;
+    }
+    sseSvc.broadcast('entrada', {
+      protocolo: updated.protocolo, placa: updated.placa, nomeMotorista: updated.nomeMotorista,
+      empresa: updated.empresa, portaria: updated.portaria?.nome,
+      tipoVeiculo: updated.tipoVeiculo, operador: req.user.nome
+    });
+    res.json(updated);
+  } catch(e){ next(e); }
+};
+
 exports.saida = async (req, res, next) => {
   try {
     const { protocolo } = req.params;

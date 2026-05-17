@@ -5,5 +5,6 @@ r.use(authenticate);
 r.get('/',                     requireRole('supervisor'), c.listar);
 r.get('/:id',                  requireRole('operador'),   c.buscar);
 r.post('/',                    requireRole('operador'),   c.criar);
+r.patch('/:protocolo/entrada', requireRole('operador'),   c.autorizar);
 r.patch('/:protocolo/saida',   requireRole('operador'),   c.saida);
 module.exports = r;
