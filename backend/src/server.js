@@ -30,7 +30,8 @@ app.use(helmet({
     }
   }
 }));
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+const corsOrigins = (process.env.FRONTEND_URL || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean)
+app.use(cors({ origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins, credentials: true }));
 // Morgan sem expor o token JWT passado via ?token= (SSE)
 app.use(morgan((tokens, req, res) => {
   try {
@@ -50,11 +51,13 @@ app.use('/api/registros', rateLimit({ windowMs: 60*60*1000, max: 200, skip: (req
 app.use((req, res, next) => {
   if (['POST','PATCH','DELETE','PUT'].includes(req.method)) {
     const origin = req.headers.origin
-    const allowedOrigin = process.env.FRONTEND_URL
-    if (origin && !allowedOrigin) {
+    const allowedOrigins = (process.env.FRONTEND_URL || '')
+      .split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean)
+    if (origin && allowedOrigins.length === 0) {
       return res.status(403).json({ error: 'Servidor não configurado (FRONTEND_URL ausente)' })
     }
-    if (origin && allowedOrigin && origin !== allowedOrigin) {
+    const normalizedOrigin = (origin || '').replace(/\/$/, '')
+    if (origin && allowedOrigins.length > 0 && !allowedOrigins.includes(normalizedOrigin)) {
       return res.status(403).json({ error: 'Origem não permitida' })
     }
   }
