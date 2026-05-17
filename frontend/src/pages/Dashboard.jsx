@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Users, LogIn, LogOut, BarChart2, PlusCircle, RefreshCw } from 'lucide-react'
 import api from '../api/client'
@@ -44,11 +44,15 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const { notificacoes } = useRealtimeCtx()
+  const abortRef = useRef(null)
+  const debounceRef = useRef(null)
 
   const fetchData = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
     setLoading(true)
     setError('')
-    const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 8000)
     try {
       const [resResumo, resRegistros] = await Promise.all([
@@ -69,13 +73,19 @@ export default function Dashboard() {
     }
   }, [])
 
-  // Atualiza dados automaticamente quando chega evento em tempo real
+  // Debounced auto-refresh on SSE events (1.5s window)
   useEffect(() => {
-    if (notificacoes.length > 0) fetchData()
+    if (notificacoes.length === 0) return
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => fetchData(), 1500)
   }, [notificacoes.length, fetchData])
 
   useEffect(() => {
     fetchData()
+    return () => {
+      if (abortRef.current) abortRef.current.abort()
+      clearTimeout(debounceRef.current)
+    }
   }, [])
 
   return (

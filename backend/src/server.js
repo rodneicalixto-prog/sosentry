@@ -4,8 +4,20 @@ const helmet     = require('helmet');
 const cors       = require('cors');
 const morgan     = require('morgan');
 const rateLimit  = require('express-rate-limit');
+const { PrismaClient } = require('@prisma/client');
 
+if (!process.env.FRONTEND_URL) console.warn('[AVISO] FRONTEND_URL não definido — CSRF e CORS podem falhar em produção');
+
+const prisma = new PrismaClient();
 const app = express();
+
+// Limpa sessões expiradas a cada 6 horas
+setInterval(async () => {
+  try {
+    const { count } = await prisma.session.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+    if (count > 0) console.log(`[session-cleanup] ${count} sessão(ões) expirada(s) removida(s)`);
+  } catch (e) { console.error('[session-cleanup] Erro:', e.message); }
+}, 6 * 60 * 60 * 1000);
 app.use(helmet());
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 // Morgan sem expor o token JWT passado via ?token= (SSE)
@@ -45,10 +57,7 @@ app.use('/api/eventos',  require('./routes/eventos.routes'));
 
 app.get('/health', async (_, res) => {
   try {
-    const { PrismaClient } = require('@prisma/client')
-    const p = new PrismaClient()
-    await p.$queryRaw`SELECT 1`
-    await p.$disconnect()
+    await prisma.$queryRaw`SELECT 1`
     res.json({ ok: true, app: 'SOS Entry', db: 'ok', ts: new Date() })
   } catch (e) {
     res.status(503).json({ ok: false, app: 'SOS Entry', db: 'error', error: e.message })

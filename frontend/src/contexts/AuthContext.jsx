@@ -23,7 +23,7 @@ export function AuthProvider({ children }) {
     }
     try {
       const { data } = await api.get('/api/auth/me')
-      setUser(data)
+      setUser(data.user)
     } catch {
       setUser(null)
       localStorage.removeItem('accessToken')

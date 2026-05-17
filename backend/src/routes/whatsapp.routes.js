@@ -32,6 +32,12 @@ r.get('/qrcode', async (req, res) => {
 r.post('/send', async (req, res) => {
   try {
     const { number, text } = req.body;
+    if (!number || !/^\d{10,15}$/.test(String(number).replace(/\D/g, '')))
+      return res.status(400).json({ error: 'Número inválido (10–15 dígitos)' });
+    if (!text || typeof text !== 'string' || text.trim().length === 0)
+      return res.status(400).json({ error: 'Texto obrigatório' });
+    if (text.length > 4096)
+      return res.status(400).json({ error: 'Texto muito longo (máx 4096 caracteres)' });
     const resp = await evoFetch(`/message/sendText/${EVO_INST}`, {
       method: 'POST',
       body: JSON.stringify({ number, text })

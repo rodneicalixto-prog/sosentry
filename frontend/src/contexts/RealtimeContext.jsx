@@ -11,7 +11,7 @@ export function RealtimeProvider({ children }) {
   const [naoLidas, setNaoLidas] = useState(0)
 
   const adicionarNotificacao = useCallback((evento) => {
-    const nova = { id: Date.now() + Math.random(), ...evento, lida: false }
+    const nova = { id: crypto.randomUUID(), ...evento, lida: false }
     setNotificacoes(prev => [nova, ...prev].slice(0, MAX_NOTIFS))
     setNaoLidas(n => n + 1)
   }, [])

@@ -126,6 +126,8 @@ export default function Usuarios() {
   }
 
   const toggleAtivo = async (u) => {
+    const acao = u.ativo !== false ? 'desativar' : 'ativar'
+    if (!window.confirm(`Deseja ${acao} o usuário "${u.nome || u.login}"?`)) return
     try {
       await api.patch(`/api/users/${u.id}`, { ativo: !u.ativo })
       setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, ativo: !u.ativo } : x)))
