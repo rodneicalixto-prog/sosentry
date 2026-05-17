@@ -13,6 +13,7 @@ Sistema de controle de entrada e saída de veículos em portarias industriais. N
 | Tempo real | Server-Sent Events (SSE) — EventSource nativo |
 | WhatsApp | Evolution API (evogo.sosbot.online) |
 | Infra | Docker multi-stage build + docker-compose + Nginx |
+| PWA | manifest.json + Service Worker + push notifications |
 
 ## Estrutura de arquivos
 
@@ -51,6 +52,7 @@ sosentry/
 │   │   ├── api/
 │   │   │   └── client.js               Axios, BASE_URL='', refresh token automático
 │   │   ├── components/
+│   │   │   ├── InstallBanner.jsx       Banner PWA "Instalar" — evento beforeinstallprompt
 │   │   │   ├── Layout.jsx              Header + sidebar + outlet + Toasts
 │   │   │   ├── NotificationBell.jsx    Sino com badge bounce + dropdown histórico
 │   │   │   ├── ProtectedRoute.jsx      minRole + fallback prop
@@ -73,6 +75,11 @@ sosentry/
 │   │           ├── Usuarios.jsx        CRUD de usuários (admin+)
 │   │           ├── Webhooks.jsx        CRUD + guia n8n + botão testar
 │   │           └── Whatsapp.jsx        Status, QR Code, envio de teste
+│   ├── public/
+│   │   ├── manifest.json               PWA: nome, tema, atalhos, ícones
+│   │   ├── sw.js                       Service worker: cache-first + push handler
+│   │   ├── favicon.svg                 Ícone SVG do app
+│   │   └── icons/                      PNG 72/96/128/144/152/192/384/512px
 │   ├── nginx.conf                      SPA + proxy /api + SSE sem buffer
 │   └── Dockerfile                      Multi-stage: Node 20 → Nginx Alpine
 ├── infra/
@@ -298,6 +305,40 @@ const crypto = require('crypto')
 const esperado = 'sha256=' + crypto.createHmac('sha256', SECRET).update(rawBody).digest('hex')
 const valido = crypto.timingSafeEqual(Buffer.from(req.headers['x-sos-signature']), Buffer.from(esperado))
 ```
+
+## PWA (Progressive Web App)
+
+O frontend é um PWA completo — instalável na tela inicial do celular sem loja.
+
+### Arquivos
+
+| Arquivo | Função |
+|---------|--------|
+| `public/manifest.json` | Nome, tema (`#1d4ed8`), ícones, atalhos (Nova Entrada / Saída) |
+| `public/sw.js` | Cache-first para estáticos, rede para `/api/`, push handler |
+| `public/icons/*.png` | 8 tamanhos: 72, 96, 128, 144, 152, 192, 384, 512px |
+| `src/components/InstallBanner.jsx` | Banner "Instalar" via `beforeinstallprompt` (Android/Chrome) |
+
+### Service Worker — estratégia de cache
+
+```
+GET /api/*   → sempre rede (nunca cacheia dados da API)
+GET outros   → cache-first; fallback /index.html quando offline
+push event   → exibe notificação nativa com ícone e vibração
+notificationclick → foca/abre o app na URL correta
+```
+
+### Instalação no celular
+
+- **Android:** Chrome exibe o banner automaticamente; pressionar o ícone do app mostra atalhos (Entrada/Saída)
+- **iOS Safari:** Menu → "Adicionar à Tela de Início" — funciona em standalone, push notifications a partir do iOS 16.4
+
+### Push notifications (futuro)
+
+O service worker já tem o handler `push` implementado. Para ativá-las:
+1. Gerar chaves VAPID no backend (`web-push` npm package)
+2. Chamar `registration.pushManager.subscribe()` no frontend após login
+3. Salvar a subscription no backend e disparar via `webpush.sendNotification()`
 
 ## Arquitetura Docker
 

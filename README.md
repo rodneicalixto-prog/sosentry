@@ -11,6 +11,7 @@ Sistema de controle de entrada e saída de veículos em portarias industriais co
 - Painel administrativo com gestão de usuários e portarias
 - Roles hierárquicos: `superadmin → admin → supervisor → operador`
 - Interface responsiva: mobile, tablet e desktop
+- **PWA instalável** — funciona como app nativo no celular, sem loja
 
 ---
 
@@ -183,6 +184,40 @@ certbot --nginx -d seudominio.com.br
 
 ---
 
+## PWA — App instalável
+
+O SOS Entry é um **Progressive Web App**: pode ser instalado na tela inicial do celular como um app nativo, sem passar pela Play Store ou App Store.
+
+### Como instalar
+
+**Android (Chrome):**
+1. Acesse `http://IP-DA-VPS` pelo Chrome
+2. Um banner aparece na parte inferior: **"Instalar SOS Entry"**
+3. Toque em **Instalar** → o app vai para a tela inicial
+
+**iOS (Safari):**
+1. Acesse o endereço pelo Safari
+2. Toque no ícone de compartilhar ↑
+3. Selecione **"Adicionar à Tela de Início"**
+
+### O que o PWA oferece
+
+| Recurso | Android | iOS (16.4+) |
+|---------|:-------:|:-----------:|
+| Instalar na tela inicial | ✅ | ✅ |
+| Tela cheia (sem barra do browser) | ✅ | ✅ |
+| Funciona offline (shell do app) | ✅ | ✅ |
+| Push notifications nativas | ✅ | ✅ |
+| Atalhos de tela inicial (Entrada/Saída) | ✅ | — |
+
+### Atalhos de tela inicial (Android)
+
+Ao manter pressionado o ícone do app, aparecem atalhos rápidos:
+- **Nova Entrada** → abre direto no formulário de entrada
+- **Registrar Saída** → abre direto na tela de saída
+
+---
+
 ## Notificações em tempo real
 
 O sistema usa **Server-Sent Events (SSE)** — conexão HTTP persistente do browser com o servidor.
@@ -298,6 +333,7 @@ sosentry/
 │   │   ├── api/
 │   │   │   └── client.js           Axios + refresh token automático
 │   │   ├── components/
+│   │   │   ├── InstallBanner.jsx   Banner de instalação PWA (Android)
 │   │   │   ├── Layout.jsx          Header + sidebar + outlet
 │   │   │   ├── NotificationBell.jsx  Sino com badge e dropdown
 │   │   │   ├── ProtectedRoute.jsx
@@ -320,6 +356,11 @@ sosentry/
 │   │           ├── Usuarios.jsx
 │   │           ├── Webhooks.jsx    CRUD + guia n8n
 │   │           └── Whatsapp.jsx    Status, QR Code, envio de teste
+│   ├── public/
+│   │   ├── manifest.json           PWA manifest (nome, ícones, atalhos)
+│   │   ├── sw.js                   Service worker (cache offline + push)
+│   │   ├── favicon.svg
+│   │   └── icons/                  Ícones PNG 72→512px
 │   ├── nginx.conf                  SPA + proxy /api + SSE sem buffer
 │   └── Dockerfile                  Build multi-stage Node → Nginx
 ├── infra/
