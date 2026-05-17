@@ -14,9 +14,17 @@ async function send(number, text) {
   if (!r.ok) throw new Error('Evo '+r.status);
 }
 
+function fmtDataHora(iso) {
+  const d = new Date(iso)
+  const pad = n => String(n).padStart(2, '0')
+  return {
+    hora: `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`,
+    data: `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`
+  }
+}
+
 async function enviarEntrada(reg) {
-  const hora = new Date(reg.dataEntrada).toLocaleTimeString('pt-BR');
-  const data = new Date(reg.dataEntrada).toLocaleDateString('pt-BR');
+  const { hora, data } = fmtDataHora(reg.dataEntrada);
   const msg  = `✅ *SOS Entry — Entrada registrada!*\n\n` +
     `📋 Protocolo: ${reg.protocolo}\n` +
     `🚛 Placa: ${reg.placa}\n⏰ ${hora} · 📅 ${data}\n\n` +
@@ -38,7 +46,7 @@ async function enviarEntrada(reg) {
 }
 
 async function enviarSaida(reg) {
-  const hora = new Date(reg.horaSaida).toLocaleTimeString('pt-BR');
+  const { hora } = fmtDataHora(reg.horaSaida);
   await send(reg.telefoneMotorista,
     `✅ *SOS Entry — Saída registrada!*\n\n📋 ${reg.protocolo}\n⏰ ${hora}\n\nObrigado! ✌️`);
 }

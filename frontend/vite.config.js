@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { readFileSync } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 const buildVersion = `${pkg.version}-${Date.now()}`
@@ -8,14 +8,15 @@ const buildVersion = `${pkg.version}-${Date.now()}`
 export default defineConfig({
   plugins: [
     react(),
-    // Substitui __BUILD_VERSION__ no sw.js copiado para dist/
+    // Substitui __BUILD_VERSION__ no sw.js após o build (arquivo vem de public/, não é bundlado)
     {
       name: 'sw-version',
-      generateBundle(_, bundle) {
-        if (bundle['sw.js']) {
-          bundle['sw.js'].source = bundle['sw.js'].source
-            .replace('__BUILD_VERSION__', buildVersion)
-        }
+      closeBundle() {
+        const swPath = './dist/sw.js'
+        try {
+          const src = readFileSync(swPath, 'utf-8')
+          writeFileSync(swPath, src.replace('__BUILD_VERSION__', buildVersion))
+        } catch { /* ignora se não existe (ex: modo dev) */ }
       },
     },
   ],

@@ -12,8 +12,29 @@ export function useRealtime(onEvento, onConectado) {
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
+    function verificarToken(fechar) {
+      try {
+        const t = localStorage.getItem('accessToken')
+        if (!t) return
+        const parts = t.split('.')
+        if (parts.length !== 3) return
+        const { exp } = JSON.parse(atob(parts[1]))
+        if (exp * 1000 < Date.now()) {
+          fechar()
+          localStorage.removeItem('accessToken')
+          localStorage.removeItem('refreshToken')
+          window.location.href = '/login'
+        }
+      } catch (e) {
+        console.warn('[useRealtime] Falha ao verificar expiração do token:', e.message)
+      }
+    }
+
     const url = `/api/eventos?token=${encodeURIComponent(token)}`
     const es = new EventSource(url)
+
+    // Verifica expiração a cada 30s enquanto SSE está ativo
+    const tokenCheck = setInterval(() => verificarToken(() => es.close()), 30000)
 
     es.addEventListener('conectado', () => {
       cbConectado.current?.(true)
@@ -22,27 +43,18 @@ export function useRealtime(onEvento, onConectado) {
     es.addEventListener('atividade', (e) => {
       try {
         cbEvento.current?.(JSON.parse(e.data))
-      } catch { /* ignore parse errors */ }
+      } catch (err) {
+        console.warn('[useRealtime] Falha ao decodificar evento SSE:', err.message)
+      }
     })
 
     es.onerror = () => {
       cbConectado.current?.(false)
-      // Verificar se o token expirou para não reconectar infinitamente com token inválido
-      try {
-        const t = localStorage.getItem('accessToken')
-        if (t) {
-          const { exp } = JSON.parse(atob(t.split('.')[1]))
-          if (exp * 1000 < Date.now()) {
-            es.close()
-            localStorage.removeItem('accessToken')
-            localStorage.removeItem('refreshToken')
-            window.location.href = '/login'
-          }
-        }
-      } catch (e) { console.warn('[useRealtime] Falha ao verificar expiração do token:', e.message) }
+      verificarToken(() => es.close())
     }
 
     return () => {
+      clearInterval(tokenCheck)
       es.close()
       cbConectado.current?.(false)
     }

@@ -80,8 +80,16 @@ app.get('/health', async (_, res) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(err.status || 500).json({ error: err.message || 'Erro interno' });
+  if (process.env.NODE_ENV !== 'production') {
+    console.error(err);
+  } else {
+    console.error(`[error] ${err.status || 500} ${err.message}`);
+  }
+  const status = err.status || 500;
+  const message = process.env.NODE_ENV === 'production' && status === 500
+    ? 'Erro interno do servidor'
+    : (err.message || 'Erro interno');
+  res.status(status).json({ error: message });
 });
 
 app.listen(process.env.PORT || 3001, () =>

@@ -74,22 +74,27 @@ function drain() {
   }
 }
 
-async function postarComRetry(url, payload, headers, tentativa = 1) {
+async function postarComRetry(url, payload, headers, tentativa = 1, inicio = Date.now()) {
+  const MAX_TENTATIVAS = 3
+  const MAX_TEMPO_TOTAL = 30000 // 30s teto por payload
   let r
   try {
     r = await postar(url, payload, headers)
   } catch (e) {
-    // Erro de rede ou timeout — retenta
-    if (tentativa < 3) {
-      await new Promise(res => setTimeout(res, Math.pow(2, tentativa) * 1000))
-      return postarComRetry(url, payload, headers, tentativa + 1)
+    const tempoRestante = MAX_TEMPO_TOTAL - (Date.now() - inicio)
+    if (tentativa < MAX_TENTATIVAS && tempoRestante > 2000) {
+      const delay = Math.min(Math.pow(2, tentativa) * 1000, tempoRestante - 1000)
+      await new Promise(res => setTimeout(res, delay))
+      return postarComRetry(url, payload, headers, tentativa + 1, inicio)
     }
     throw e
   }
-  // Retenta apenas em 5xx (erros do servidor receptor), não em 4xx (erro do payload)
-  if (r.status >= 500 && tentativa < 3) {
-    await new Promise(res => setTimeout(res, Math.pow(2, tentativa) * 1000))
-    return postarComRetry(url, payload, headers, tentativa + 1)
+  // Retenta apenas em 5xx, não em 4xx
+  const tempoRestante = MAX_TEMPO_TOTAL - (Date.now() - inicio)
+  if (r.status >= 500 && tentativa < MAX_TENTATIVAS && tempoRestante > 2000) {
+    const delay = Math.min(Math.pow(2, tentativa) * 1000, tempoRestante - 1000)
+    await new Promise(res => setTimeout(res, delay))
+    return postarComRetry(url, payload, headers, tentativa + 1, inicio)
   }
   return r
 }
@@ -103,7 +108,7 @@ async function disparar(evento, dados) {
     return;
   }
 
-  const ativos = webhooks.filter(wh => wh.ativo && wh.eventos?.length && wh.eventos.includes(evento));
+  const ativos = webhooks.filter(wh => wh.ativo === true && Array.isArray(wh.eventos) && wh.eventos.length > 0 && wh.eventos.includes(evento));
   if (!ativos.length) return;
 
   const payload = JSON.stringify({ evento, ts: new Date().toISOString(), dados });

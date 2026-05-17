@@ -28,10 +28,12 @@ export default function RegistrarSaida() {
     try {
       const { data } = await api.get('/api/registros', { params: { busca: protocolo.trim(), limit: 1 } })
       const reg = data.registros?.[0]
-      if (!reg) { setErro('Protocolo ou placa não encontrado.'); return }
+      if (!reg) { setErro('Protocolo ou placa não encontrado. Verifique e tente novamente.'); return }
       setRegistro(reg)
-    } catch {
-      setErro('Erro ao buscar. Tente novamente.')
+    } catch (err) {
+      const msg = err?.response?.data?.error
+        || (err?.response ? `Erro do servidor (${err.response.status})` : 'Sem conexão. Verifique a rede e tente novamente.')
+      setErro(msg)
     } finally {
       setBuscando(false)
     }

@@ -38,6 +38,7 @@ exports.criar = async (req, res, next) => {
     if (d.obsMaterial?.length > 500) return res.status(400).json({ error: 'Observação de material muito longa (máx 500 chars)' })
     if (d.obsGeral?.length > 2000) return res.status(400).json({ error: 'Observação geral muito longa (máx 2000 chars)' })
     if (!validarCPF(d.cpf)) return res.status(400).json({ error: 'CPF inválido' })
+    if (d.temAjudante && !d.ajudanteNome) return res.status(400).json({ error: 'Nome do ajudante obrigatório' })
     if (d.ajudanteCpf && !validarCPF(d.ajudanteCpf)) return res.status(400).json({ error: 'CPF do ajudante inválido' })
     if (d.telefone && !validarTelefone(d.telefone)) return res.status(400).json({ error: 'Telefone do motorista inválido (10–15 dígitos)' })
     if (d.ajudanteTelefone && !validarTelefone(d.ajudanteTelefone)) return res.status(400).json({ error: 'Telefone do ajudante inválido (10–15 dígitos)' })

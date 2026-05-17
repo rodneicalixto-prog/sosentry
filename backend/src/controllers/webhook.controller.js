@@ -40,7 +40,10 @@ exports.atualizar = async (req, res, next) => {
       const eventosInvalidos = eventos.filter(e => !EVENTOS_VALIDOS.includes(e));
       if (eventosInvalidos.length) return res.status(400).json({ error: `Eventos inválidos: ${eventosInvalidos.join(', ')}` });
     }
-    if (url) { try { new URL(url); } catch { return res.status(400).json({ error: 'URL inválida' }); } }
+    if (url !== undefined) {
+      if (!url) return res.status(400).json({ error: 'URL não pode ser vazia' });
+      try { new URL(url); } catch { return res.status(400).json({ error: 'URL inválida' }); }
+    }
 
     const wh = await prisma.webhook.update({
       where: { id },
