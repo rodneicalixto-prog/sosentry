@@ -77,6 +77,7 @@ exports.criar = async (req, res, next) => {
       placa,
       tipoVeiculo: d.tipoVeiculo, empresa: d.empresa||null, notaFiscal: d.notaFiscal||null,
       tipoOperacao: d.tipoOperacao, tipoMaterial: d.tipoMaterial||null,
+      tipoEmbalagem: d.tipoEmbalagem||null, quantidade: d.quantidade ? Number(d.quantidade) : null,
       obsMaterial: d.obsMaterial||null, obsGeral: d.obsGeral||null,
       temAjudante: !!d.temAjudante,
       ajudanteNome: ajNome, ajudanteCpf: ajCpf, ajudanteTelefone: ajTel, ajudanteRg: ajRg,

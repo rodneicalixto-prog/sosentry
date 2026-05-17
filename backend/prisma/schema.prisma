@@ -76,6 +76,8 @@ model Registro {
   notaFiscal        String?        @map("nota_fiscal")
   tipoOperacao      String         @map("tipo_operacao")
   tipoMaterial      String?        @map("tipo_material")
+  tipoEmbalagem     String?        @map("tipo_embalagem")
+  quantidade        Int?
   obsMaterial       String?        @map("obs_material")
   obsGeral          String?        @map("obs_geral")
   temAjudante       Boolean        @default(false) @map("tem_ajudante")

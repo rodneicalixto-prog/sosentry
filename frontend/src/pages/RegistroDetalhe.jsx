@@ -233,7 +233,9 @@ export default function RegistroDetalhe() {
           <Detail label="Empresa"        value={registro.empresa} />
           <Detail label="Nota Fiscal"    value={registro.notaFiscal} />
           <Detail label="Tipo Operação"  value={registro.tipoOperacao} />
-          <Detail label="Tipo Material"  value={registro.tipoMaterial} />
+          <Detail label="Tipo Material"   value={registro.tipoMaterial} />
+          <Detail label="Tipo Embalagem" value={registro.tipoEmbalagem} />
+          <Detail label="Quantidade"     value={registro.quantidade != null ? String(registro.quantidade) : null} />
           <Detail label="Obs. Material"  value={registro.obsMaterial} span />
           <Detail label="Obs. Geral"     value={registro.obsGeral} span />
         </dl>

@@ -52,6 +52,8 @@ export default function NovaEntrada() {
       notaFiscal: '',
       tipoOperacao: '',
       tipoMaterial: '',
+      tipoEmbalagem: '',
+      quantidade: '',
       obsMaterial: '',
       obsGeral: '',
       nomeAjudante: '',
@@ -311,14 +313,47 @@ export default function NovaEntrada() {
               <label className="label" htmlFor="tipoMaterial">
                 Tipo de Material
               </label>
-              <input
+              <select
                 id="tipoMaterial"
-                type="text"
                 className="input"
-                placeholder="Tipo do material transportado"
-                maxLength={100}
                 {...register('tipoMaterial')}
+              >
+                <option value="">Selecione…</option>
+                <option value="Embalagem">Embalagem</option>
+                <option value="Matéria Prima">Matéria Prima</option>
+                <option value="Outros">Outros</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="label" htmlFor="tipoEmbalagem">
+                Tipo de Embalagem
+              </label>
+              <select
+                id="tipoEmbalagem"
+                className="input"
+                {...register('tipoEmbalagem')}
+              >
+                <option value="">Selecione…</option>
+                <option value="Paletes">Paletes</option>
+                <option value="Caixas">Caixas</option>
+                <option value="Outros">Outros</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="label" htmlFor="quantidade">
+                Quantidade
+              </label>
+              <input
+                id="quantidade"
+                type="number"
+                min="1"
+                className="input"
+                placeholder="Ex: 10"
+                {...register('quantidade', { min: { value: 1, message: 'Mínimo 1' } })}
               />
+              <InputError message={errors.quantidade?.message} />
             </div>
 
             <div className="sm:col-span-2">
