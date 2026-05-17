@@ -12,9 +12,10 @@ import Dashboard from './pages/Dashboard'
 import Registros from './pages/Registros'
 import NovaEntrada from './pages/NovaEntrada'
 import RegistroDetalhe from './pages/RegistroDetalhe'
-import Usuarios from './pages/admin/Usuarios'
-import Webhooks from './pages/admin/Webhooks'
-import Whatsapp from './pages/admin/Whatsapp'
+import Usuarios   from './pages/admin/Usuarios'
+import Webhooks   from './pages/admin/Webhooks'
+import Whatsapp   from './pages/admin/Whatsapp'
+import Relatorios from './pages/admin/Relatorios'
 import RegistrarSaida from './pages/RegistrarSaida'
 
 export default function App() {
@@ -53,6 +54,14 @@ export default function App() {
             <Route path="/registros/:id" element={<RegistroDetalhe />} />
             <Route path="/saida" element={<RegistrarSaida />} />
 
+            <Route
+              path="/admin/relatorios"
+              element={
+                <ProtectedRoute minRole="admin">
+                  <Relatorios />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/admin/usuarios"
               element={

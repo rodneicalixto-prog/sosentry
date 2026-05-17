@@ -11,6 +11,7 @@ import {
   LogOut,
   X,
   ShieldCheck,
+  BarChart2,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -22,9 +23,10 @@ const NAV = [
 ]
 
 const ADMIN_NAV = [
-  { to: '/admin/usuarios', label: 'Usuários', icon: Users, minRole: 'admin' },
-  { to: '/admin/webhooks', label: 'Webhooks', icon: Webhook, minRole: 'admin' },
-  { to: '/admin/whatsapp', label: 'WhatsApp', icon: MessageCircle, minRole: 'admin' },
+  { to: '/admin/relatorios', label: 'Relatórios', icon: BarChart2, minRole: 'admin' },
+  { to: '/admin/usuarios',   label: 'Usuários',   icon: Users,       minRole: 'admin' },
+  { to: '/admin/webhooks',   label: 'Webhooks',   icon: Webhook,     minRole: 'admin' },
+  { to: '/admin/whatsapp',   label: 'WhatsApp',   icon: MessageCircle, minRole: 'admin' },
 ]
 
 export default function Sidebar({ open, onClose }) {
