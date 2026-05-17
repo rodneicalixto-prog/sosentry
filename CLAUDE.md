@@ -1,6 +1,6 @@
-# SOS Entry — Documentação do Projeto
+# SOS Entry — Documentação Técnica
 
-Sistema de controle de entrada e saída de veículos em portarias industriais com notificações WhatsApp e integração via webhooks (n8n e similares).
+Sistema de controle de entrada e saída de veículos em portarias industriais. Notificações em tempo real via SSE, WhatsApp, webhooks para automação e painel administrativo completo.
 
 ## Stack
 
@@ -8,26 +8,78 @@ Sistema de controle de entrada e saída de veículos em portarias industriais co
 |--------|-----------|
 | Backend | Node.js 20 + Express 4 |
 | ORM | Prisma 5 + PostgreSQL |
-| Banco | Supabase (projeto `yshvniyhtnyhnjcecbft`, região sa-east-1) |
-| Frontend | React 18 + Vite + Tailwind CSS |
+| Banco | Supabase (projeto `yshvniyhtnyhnjcecbft`, sa-east-1) |
+| Frontend | React 18 + Vite + Tailwind CSS v3 + React Router v6 + Axios |
+| Tempo real | Server-Sent Events (SSE) — EventSource nativo |
 | WhatsApp | Evolution API (evogo.sosbot.online) |
-| Infra | Docker + docker-compose |
+| Infra | Docker multi-stage build + docker-compose + Nginx |
 
-## Estrutura
+## Estrutura de arquivos
 
 ```
 sosentry/
-├── backend/          Node.js API
-│   ├── prisma/       Schema e migrations
+├── backend/
+│   ├── prisma/
+│   │   ├── schema.prisma         Modelos, enums, directUrl
+│   │   └── migrations/           Histórico de migrations
 │   └── src/
 │       ├── controllers/
+│       │   ├── auth.controller.js
+│       │   ├── dashboard.controller.js
+│       │   ├── portaria.controller.js
+│       │   ├── registro.controller.js    entrada, saída (lacre + obs), SSE broadcast
+│       │   ├── user.controller.js
+│       │   └── webhook.controller.js     CRUD + test endpoint
 │       ├── middleware/
+│       │   └── auth.middleware.js        JWT + roles + ?token= para SSE
 │       ├── routes/
-│       └── services/
-├── frontend/         React SPA
-│   └── src/
-├── infra/            docker-compose.yml
-└── CLAUDE.md
+│       │   ├── auth.routes.js
+│       │   ├── dashboard.routes.js
+│       │   ├── eventos.routes.js         GET /api/eventos (SSE)
+│       │   ├── portaria.routes.js
+│       │   ├── registro.routes.js
+│       │   ├── user.routes.js
+│       │   ├── webhook.routes.js
+│       │   └── whatsapp.routes.js
+│       ├── services/
+│       │   ├── evolution.service.js      Integração WhatsApp
+│       │   ├── sse.service.js            Gerencia clientes SSE + broadcast
+│       │   └── webhook.service.js        Disparo de webhooks externos (assíncrono)
+│       └── server.js
+├── frontend/
+│   ├── src/
+│   │   ├── api/
+│   │   │   └── client.js               Axios, BASE_URL='', refresh token automático
+│   │   ├── components/
+│   │   │   ├── Layout.jsx              Header + sidebar + outlet + Toasts
+│   │   │   ├── NotificationBell.jsx    Sino com badge bounce + dropdown histórico
+│   │   │   ├── ProtectedRoute.jsx      minRole + fallback prop
+│   │   │   ├── Sidebar.jsx             Navegação com roles
+│   │   │   ├── StatusBadge.jsx         Chips coloridos de status
+│   │   │   └── Toasts.jsx              Slide-in notifications (verde/laranja), 6s
+│   │   ├── contexts/
+│   │   │   ├── AuthContext.jsx         Login, logout, user state
+│   │   │   └── RealtimeContext.jsx     Notificações SSE globais (até 50), naoLidas
+│   │   ├── hooks/
+│   │   │   └── useRealtime.js          EventSource com ?token=, reconexão automática
+│   │   └── pages/
+│   │       ├── Dashboard.jsx           Stats + últimos registros, auto-refresh via SSE
+│   │       ├── Login.jsx
+│   │       ├── NovaEntrada.jsx         Form completo de entrada
+│   │       ├── RegistrarSaida.jsx      Busca por protocolo/placa + lacre + ocorrências
+│   │       ├── RegistroDetalhe.jsx     Detalhe + SaidaModal (lacre + obs)
+│   │       ├── Registros.jsx           Lista: cards mobile / tabela tablet+
+│   │       └── admin/
+│   │           ├── Usuarios.jsx        CRUD de usuários (admin+)
+│   │           ├── Webhooks.jsx        CRUD + guia n8n + botão testar
+│   │           └── Whatsapp.jsx        Status, QR Code, envio de teste
+│   ├── nginx.conf                      SPA + proxy /api + SSE sem buffer
+│   └── Dockerfile                      Multi-stage: Node 20 → Nginx Alpine
+├── infra/
+│   ├── docker-compose.yml              Backend + Frontend em rede interna
+│   └── setup.sh                        Instalação automática em VPS (1 comando)
+├── CLAUDE.md                           Este arquivo
+└── README.md                           Documentação de instalação e uso
 ```
 
 ## Rodar localmente
@@ -39,28 +91,39 @@ cp .env.example .env   # preencher variáveis
 npm install
 npm run dev            # porta 3001
 
-# Frontend
+# Frontend (em outro terminal)
 cd frontend
 npm install
-npm run dev            # porta 5173
+npm run dev            # porta 5173 — Vite proxy /api → localhost:3001
 ```
+
+Não é necessário definir `VITE_API_URL` em desenvolvimento — o Vite já proxia `/api`.
 
 ## Variáveis de ambiente (backend/.env)
 
 ```env
+# Supabase — pooler para queries normais
 DATABASE_URL="postgresql://postgres.{ref}:{senha}@aws-0-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+# Supabase — conexão direta para migrations Prisma
 DIRECT_URL="postgresql://postgres:{senha}@db.{ref}.supabase.co:5432/postgres"
-JWT_SECRET="..."
-JWT_REFRESH_SECRET="..."
+
+JWT_SECRET="secret-longo-aleatorio"
+JWT_REFRESH_SECRET="outro-secret-longo"
 PORT=3001
 NODE_ENV=production
-FRONTEND_URL="http://localhost:5173"
+FRONTEND_URL="https://seudominio.com"
+
+# Evolution API (WhatsApp) — opcional
 EVOLUTION_API_URL="https://evogo.sosbot.online"
-EVOLUTION_API_KEY="b55d5d85-456b-464f-a418-a97e34cb3d8f"
+EVOLUTION_API_KEY="sua-chave"
 EVOLUTION_INSTANCE="portaria"
 WHATSAPP_RESPONSAVEL="5511999999999"
-SEED_SUPERADMIN_SENHA="..."
+
+# Seed
+SEED_SUPERADMIN_SENHA="sua-senha-forte"
 ```
+
+> **Atenção:** se a senha contiver `@`, substitua por `%40` na URL de conexão.
 
 ## Banco de dados
 
@@ -68,97 +131,148 @@ Projeto Supabase: `yshvniyhtnyhnjcecbft` (sa-east-1)
 
 ### Tabelas
 
-| Tabela | Descrição |
-|--------|-----------|
-| `users` | Usuários do sistema |
-| `sessions` | Sessões JWT (refresh tokens) |
-| `portarias` | Portarias cadastradas |
-| `registros` | Registros de entrada/saída de veículos |
-| `webhooks` | Webhooks para integração com n8n e automações |
-| `audit_logs` | Log de auditoria de ações |
+| Tabela | Campos relevantes |
+|--------|------------------|
+| `users` | id, login, nome, senha (bcrypt), role, ativo, portariaId |
+| `sessions` | id, userId, refreshToken, expiresAt |
+| `portarias` | id, nome, ativa |
+| `registros` | protocolo, placa, nomeMotorista, empresa, tipoVeiculo, dataEntrada, dataSaida, **lacre**, **obsOcorrencia**, status, operadorId, portariaId |
+| `webhooks` | id, nome, url, secret, eventos (array), ativo |
+| `audit_logs` | id, userId, acao, tabela, registroId, detalhes, ip |
 
 ### Migrations
 
 ```bash
 cd backend
 npx prisma migrate dev --name nome_da_migration   # desenvolvimento
-npx prisma migrate deploy                          # produção
-npx prisma db seed                                 # seed inicial
+npx prisma migrate deploy                          # produção (Docker)
+npx prisma generate                                # regenerar client
 ```
+
+### Seed inicial
+
+```bash
+# Docker
+docker compose exec backend node src/config/seed.js
+
+# Local
+node src/config/seed.js
+```
+
+Cria: Portaria 1 (Transportes), Portaria 2 (Pedestres), usuário `superadmin`.
 
 ## Roles e permissões
 
-| Role | Nível | Permissões |
-|------|-------|------------|
+| Role | Nível | Acesso |
+|------|-------|--------|
 | `superadmin` | 4 | Tudo |
-| `admin` | 3 | Usuários, webhooks, dashboard completo |
-| `supervisor` | 2 | Listar registros, dashboard |
-| `operador` | 1 | Criar entrada/saída |
+| `admin` | 3 | Usuários, webhooks, WhatsApp, dashboard |
+| `supervisor` | 2 | Dashboard, lista de registros, detalhes |
+| `operador` | 1 | Nova entrada, registrar saída, detalhe do próprio registro |
+
+`ProtectedRoute` aceita `minRole` e `fallback` (rota padrão quando role insuficiente — operador vai para `/saida`).
 
 ## API Endpoints
 
 ### Auth
 ```
-POST   /api/auth/login          Autenticar
-POST   /api/auth/refresh        Renovar token
-POST   /api/auth/logout         Encerrar sessão
-GET    /api/auth/me             Dados do usuário logado
+POST   /api/auth/login               Autenticar (retorna access + refresh token)
+POST   /api/auth/refresh             Renovar access token
+POST   /api/auth/logout              Invalidar sessão
+GET    /api/auth/me                  Dados do usuário logado
 ```
 
 ### Registros
 ```
-GET    /api/registros           Listar (supervisor+) — query: page,limit,status,busca,dataInicio,dataFim
-POST   /api/registros           Nova entrada (operador+)
-GET    /api/registros/:id       Detalhes (operador+)
-PATCH  /api/registros/:protocolo/saida   Registrar saída (operador+)
+GET    /api/registros                Listar (supervisor+) — ?page,limit,status,busca,dataInicio,dataFim
+POST   /api/registros                Nova entrada (operador+) — dispara SSE + webhook + WhatsApp
+GET    /api/registros/:id            Detalhes (operador+)
+PATCH  /api/registros/:protocolo/saida   Registrar saída (operador+) — aceita lacre, obsOcorrencia
 ```
 
 ### Portarias
 ```
-GET    /api/portarias           Listar portarias ativas (autenticado)
+GET    /api/portarias                Listar portarias ativas (autenticado)
 ```
 
 ### Dashboard
 ```
-GET    /api/dashboard/resumo    Estatísticas (supervisor+)
+GET    /api/dashboard/resumo         Estatísticas: naEmpresa, entradaHoje, saidaHoje, total (supervisor+)
 ```
 
 ### Usuários
 ```
-GET    /api/users               Listar (admin+)
-POST   /api/users               Criar (admin+)
-PATCH  /api/users/:id           Atualizar (admin+)
-DELETE /api/users/:id           Desativar (admin+)
+GET    /api/users                    Listar (admin+)
+POST   /api/users                    Criar (admin+)
+PATCH  /api/users/:id                Atualizar (admin+)
+DELETE /api/users/:id                Desativar (admin+)
 ```
 
 ### Webhooks
 ```
-GET    /api/webhooks            Listar (admin+)
-POST   /api/webhooks            Criar (admin+)
-PATCH  /api/webhooks/:id        Atualizar (admin+)
-DELETE /api/webhooks/:id        Deletar (admin+)
-POST   /api/webhooks/:id/test   Testar (admin+)
+GET    /api/webhooks                 Listar (admin+)
+POST   /api/webhooks                 Criar (admin+)
+PATCH  /api/webhooks/:id             Atualizar (admin+)
+DELETE /api/webhooks/:id             Deletar (admin+)
+POST   /api/webhooks/:id/test        Disparar evento de teste (admin+)
 ```
 
-### WhatsApp / Evolution API
+### WhatsApp (Evolution API)
 ```
-GET    /api/dashboard/whatsapp/status    Status da instância (admin+)
-GET    /api/dashboard/whatsapp/qr        QR Code (admin+)
-POST   /api/dashboard/whatsapp/send      Enviar mensagem (admin+)
-DELETE /api/dashboard/whatsapp/logout    Logout (admin+)
+GET    /api/whatsapp/status          Status da instância (admin+)
+GET    /api/whatsapp/qr              QR Code para conectar (admin+)
+POST   /api/whatsapp/send            Enviar mensagem de teste (admin+)
+DELETE /api/whatsapp/logout          Desconectar instância (admin+)
 ```
+
+### SSE — Tempo real
+```
+GET    /api/eventos                  Stream SSE (operador+) — auth via ?token=JWT
+```
+
+EventSource não suporta headers customizados, portanto o JWT é passado como query param. O middleware `auth.middleware.js` aceita tanto `Authorization: Bearer <token>` quanto `?token=<token>`.
+
+Eventos emitidos:
+- `event: conectado` — imediatamente ao conectar
+- `event: atividade` — a cada entrada ou saída registrada
+- `:keepalive` — comentário a cada 25s para manter conexão viva
+
+## Notificações em tempo real (SSE)
+
+### Frontend
+
+`useRealtime.js` → `RealtimeContext.jsx` → componentes
+
+```
+EventSource /api/eventos?token=JWT
+    │
+    ├── event: conectado  → setConectado(true)
+    ├── event: atividade  → adiciona à lista notificacoes (max 50)
+    │                     → exibe Toast (6s)
+    │                     → incrementa naoLidas
+    └── onerror           → setConectado(false), EventSource reconecta sozinho
+```
+
+### Elementos visuais
+
+| Elemento | Localização | Comportamento |
+|----------|-------------|---------------|
+| **● Ao vivo** | Header | Verde pulsando = conectado; cinza = offline |
+| **Toast** | Canto superior direito | Slide-in verde (entrada) / laranja (saída), some em 6s, max 3 simultâneos |
+| **Sino** | Header | Badge vermelho com bounce; dropdown com até 50 notificações |
+| **Dashboard** | Página inicial | Stats e lista atualizam automaticamente ao receber evento SSE |
 
 ## Sistema de Webhooks
 
-Webhooks são disparados de forma assíncrona (não bloqueiam a requisição) nos eventos:
+Disparados de forma **assíncrona** (não bloqueiam a requisição) em:
 
-| Evento | Quando dispara |
-|--------|----------------|
-| `entrada` | Ao criar um novo registro de entrada |
-| `saida` | Ao registrar a saída de um veículo |
-| `cancelado` | Ao cancelar um registro |
+| Evento | Quando |
+|--------|--------|
+| `entrada` | Nova entrada registrada |
+| `saida` | Saída registrada |
+| `cancelado` | Registro cancelado |
 
-### Payload enviado
+### Payload
 
 ```json
 {
@@ -168,44 +282,83 @@ Webhooks são disparados de forma assíncrona (não bloqueiam a requisição) no
 }
 ```
 
-### Headers enviados
+### Headers
 
 ```
 Content-Type: application/json
 X-SOS-Event: entrada
-X-SOS-Webhook-Id: uuid-do-webhook
-X-SOS-Signature: sha256=hmac-hex   (apenas se secret configurado)
+X-SOS-Webhook-Id: uuid
+X-SOS-Signature: sha256=hmac   (apenas se secret configurado)
 ```
 
-### Verificar assinatura (n8n / receptor)
+### Verificar assinatura no receptor (n8n / Zapier)
 
-```javascript
-const crypto = require('crypto');
-const assinatura = req.headers['x-sos-signature'];
-const esperado = 'sha256=' + crypto.createHmac('sha256', SECRET).update(rawBody).digest('hex');
-const valido = crypto.timingSafeEqual(Buffer.from(assinatura), Buffer.from(esperado));
+```js
+const crypto = require('crypto')
+const esperado = 'sha256=' + crypto.createHmac('sha256', SECRET).update(rawBody).digest('hex')
+const valido = crypto.timingSafeEqual(Buffer.from(req.headers['x-sos-signature']), Buffer.from(esperado))
 ```
 
-## Integração n8n
+## Arquitetura Docker
 
-1. Criar webhook no n8n (Webhook node → HTTP Method: POST)
-2. Copiar a URL gerada pelo n8n
-3. No SOS Entry (admin → Webhooks): criar webhook com a URL do n8n e selecionar eventos desejados
-4. O n8n receberá o payload automaticamente a cada entrada/saída
+```
+Internet
+    │ porta 80 (ou 443 com HTTPS)
+    ▼
+┌──────────────────────────────────────────┐
+│  Container: sosentry-frontend            │
+│  Nginx                                   │
+│  ├── /api/eventos → SSE sem buffer       │
+│  ├── /api/        → proxy → backend:3001 │
+│  └── /            → React SPA            │
+└──────────────────────────────────────────┘
+    │ rede interna Docker (backend não exposto)
+    ▼
+┌──────────────────────────────────────────┐
+│  Container: sosentry-backend             │
+│  Node.js :3001                           │
+└──────────────────────────────────────────┘
+    │
+    ▼
+Supabase PostgreSQL (cloud)
+```
 
-## Deploy com Docker
+A localização `/api/eventos` tem bloco próprio no nginx com `proxy_buffering off` **antes** do bloco geral `/api/` — nginx usa o match mais específico.
+
+### Deploy em nova VPS (1 comando)
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/rodneicalixto-prog/sosentry/main/infra/setup.sh)"
+```
+
+O script instala Docker, clona o repositório, solicita as variáveis de ambiente interativamente (incluindo geração automática de JWT secrets com openssl), faz o build e sobe os containers.
+
+### Build manual
 
 ```bash
 cd infra
-docker-compose up -d
+docker compose up -d --build
+PORT=8080 docker compose up -d --build   # porta alternativa
 ```
 
-O `docker-compose.yml` sobe o backend na porta 3001. O frontend deve ser servido separadamente (Nginx, Vercel, etc.) ou adicionado ao compose.
+A imagem frontend usa `VITE_API_URL=''` (string vazia) — o nginx proxy lida com o roteamento. **A mesma imagem funciona em qualquer VPS sem rebuild.**
 
-## Seed inicial
+## Comandos úteis
 
-Credenciais padrão após `npm run db:seed`:
-- Login: `superadmin`
-- Senha: definida em `SEED_SUPERADMIN_SENHA` no `.env`
+```bash
+# Logs em tempo real
+cd infra && docker compose logs -f
 
-Portarias criadas: Portaria 1 (Transportes) e Portaria 2 (Pedestres).
+# Acessar shell do backend
+docker compose exec backend sh
+
+# Migration manual
+docker compose exec backend npx prisma migrate deploy
+
+# Seed (idempotente — não duplica dados)
+docker compose exec backend node src/config/seed.js
+
+# Atualizar para nova versão
+git pull origin main
+cd infra && docker compose up -d --build
+```
