@@ -119,7 +119,7 @@ export default function Whatsapp() {
         {qr && (
           <div className="mt-4 flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
             <p className="text-sm text-gray-500">Escaneie com o WhatsApp → Dispositivos conectados → Conectar dispositivo</p>
-            <img src={`data:image/png;base64,${qr}`} alt="QR Code WhatsApp" className="w-56 h-56 rounded-lg" />
+            <img src={qr.startsWith('data:') ? qr : `data:image/png;base64,${qr}`} alt="QR Code WhatsApp" className="w-56 h-56 rounded-lg" />
           </div>
         )}
       </div>
