@@ -97,6 +97,19 @@ model Registro {
   @@index([status])
   @@map("registros")
 }
+model Webhook {
+  id        String   @id @default(uuid())
+  nome      String
+  url       String
+  eventos   String[]
+  ativo     Boolean  @default(true)
+  secret    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  @@map("webhooks")
+}
+
 model AuditLog {
   id         String   @id @default(uuid())
   userId     String   @map("user_id")

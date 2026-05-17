@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const evo = require('../services/evolution.service');
+const webhookSvc = require('../services/webhook.service');
 
 function gerarProtocolo(num) {
   const now = new Date(), pad = n => String(n).padStart(2,'0');
@@ -27,6 +28,7 @@ exports.criar = async (req, res, next) => {
       dataEntrada: dtEntrada
     }, include: { portaria:true, operadorEntrada:{ select:{ nome:true, turno:true } } } });
     evo.enviarEntrada(registro).catch(e => console.error('Evo erro:', e.message));
+    webhookSvc.disparar('entrada', registro).catch(e => console.error('Webhook entrada erro:', e.message));
     await prisma.auditLog.create({ data:{ userId: req.user.id, acao:'CRIAR_REGISTRO',
       entidade:'registro', entidadeId: registro.id, detalhes:{ protocolo, placa: d.placa } } });
     res.status(201).json({ protocolo, registro });
@@ -42,6 +44,7 @@ exports.saida = async (req, res, next) => {
     const updated = await prisma.registro.update({ where:{ protocolo },
       data:{ horaSaida: new Date(), status:'saiu', operadorSaidaId: req.user.id } });
     evo.enviarSaida(updated).catch(e => console.error('Evo saída erro:', e.message));
+    webhookSvc.disparar('saida', updated).catch(e => console.error('Webhook saída erro:', e.message));
     res.json({ ok: true, horaSaida: updated.horaSaida });
   } catch(e){ next(e); }
 };
