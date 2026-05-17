@@ -36,7 +36,7 @@ export default function Webhooks() {
 
   async function carregar() {
     setLoading(true)
-    try { const { data } = await api.get('/api/webhooks'); setWebhooks(data) }
+    try { const { data } = await api.get('/api/webhooks'); setWebhooks(Array.isArray(data) ? data : (data.webhooks ?? [])) }
     catch { } finally { setLoading(false) }
   }
 
