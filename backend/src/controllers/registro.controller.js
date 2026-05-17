@@ -68,7 +68,7 @@ exports.criar = async (req, res, next) => {
       : new Date()
     const dados = {
       portariaId: d.portariaId, operadorEntradaId: req.user.id,
-      nomeMotorista: nome, cpfMotorista: cpf||null, telefoneMotorista: telefone||null,
+      nomeMotorista: nome, cpfMotorista: cpf, telefoneMotorista: telefone||null,
       placa,
       tipoVeiculo: d.tipoVeiculo, empresa: d.empresa||null, notaFiscal: d.notaFiscal||null,
       tipoOperacao: d.tipoOperacao, tipoMaterial: d.tipoMaterial||null,

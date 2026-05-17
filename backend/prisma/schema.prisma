@@ -69,7 +69,7 @@ model Registro {
   operadorSaidaId   String?        @map("operador_saida_id")
   nomeMotorista     String         @map("nome_motorista")
   cpfMotorista      String         @map("cpf_motorista")
-  telefoneMotorista String         @map("telefone_motorista")
+  telefoneMotorista String?        @map("telefone_motorista")
   placa             String
   tipoVeiculo       String         @map("tipo_veiculo")
   empresa           String?
