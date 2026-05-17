@@ -1,0 +1,181 @@
+{
+  "name": "SOS Entry — Notificação WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sosentry-entrada",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook SOS Entry",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "sosentry-entrada"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-evento",
+              "leftValue": "={{ $json.body.evento }}",
+              "rightValue": "entrada",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-entrada",
+      "name": "Somente Entradas",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst d = body.dados || {};\n\nconst agora = new Date(d.dataEntrada || body.ts || new Date());\nconst hora = agora.toLocaleString('pt-BR', {\n  timeZone: 'America/Sao_Paulo',\n  day: '2-digit', month: '2-digit', year: 'numeric',\n  hour: '2-digit', minute: '2-digit'\n});\n\nconst linha = (label, valor) => valor ? `*${label}:* ${valor}\\n` : '';\n\nconst mensagem =\n  `🚛 *NOVA ENTRADA — SOS Entry*\\n\\n` +\n  linha('Protocolo', d.protocolo) +\n  linha('Portaria',  d.portaria) +\n  linha('Motorista', d.nomeMotorista) +\n  linha('CPF',       d.cpfMotorista) +\n  linha('Placa',     d.placa) +\n  linha('Veículo',   d.tipoVeiculo) +\n  linha('Empresa',   d.empresa) +\n  linha('Operação',  d.tipoOperacao) +\n  linha('NF',        d.notaFiscal) +\n  linha('Material',  d.tipoMaterial) +\n  linha('Ajudante',  d.ajudanteNome) +\n  linha('Operador',  d.operador) +\n  `\\n🕐 *Entrada:* ${hora}`;\n\nreturn [{ json: { mensagem, protocolo: d.protocolo } }];"
+      },
+      "id": "montar-mensagem",
+      "name": "Montar Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.EVOLUTION_API_URL }}/message/sendText/{{ $vars.EVOLUTION_INSTANCE }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $vars.EVOLUTION_API_KEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $vars.WHATSAPP_RESPONSAVEL }}" },
+            { "name": "text",   "value": "={{ $json.mensagem }}" }
+          ]
+        },
+        "options": { "timeout": 10000 }
+      },
+      "id": "enviar-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true }",
+        "options": {}
+      },
+      "id": "responder-ok",
+      "name": "Responder 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-saida",
+              "leftValue": "={{ $json.body.evento }}",
+              "rightValue": "saida",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-saida",
+      "name": "Somente Saídas",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [460, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst d = body.dados || {};\n\nconst agora = new Date(d.horaSaida || body.ts || new Date());\nconst hora = agora.toLocaleString('pt-BR', {\n  timeZone: 'America/Sao_Paulo',\n  day: '2-digit', month: '2-digit', year: 'numeric',\n  hour: '2-digit', minute: '2-digit'\n});\n\nconst linha = (label, valor) => valor ? `*${label}:* ${valor}\\n` : '';\n\nconst mensagem =\n  `✅ *SAÍDA REGISTRADA — SOS Entry*\\n\\n` +\n  linha('Protocolo', d.protocolo) +\n  linha('Motorista', d.nomeMotorista) +\n  linha('Placa',     d.placa) +\n  linha('Empresa',   d.empresa) +\n  linha('Lacre',     d.lacre) +\n  linha('Ocorrência',d.obsOcorrencia) +\n  linha('Operador',  d.operador) +\n  `\\n🕐 *Saída:* ${hora}`;\n\nreturn [{ json: { mensagem, protocolo: d.protocolo } }];"
+      },
+      "id": "montar-mensagem-saida",
+      "name": "Montar Mensagem Saída",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.EVOLUTION_API_URL }}/message/sendText/{{ $vars.EVOLUTION_INSTANCE }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $vars.EVOLUTION_API_KEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $vars.WHATSAPP_RESPONSAVEL }}" },
+            { "name": "text",   "value": "={{ $json.mensagem }}" }
+          ]
+        },
+        "options": { "timeout": 10000 }
+      },
+      "id": "enviar-whatsapp-saida",
+      "name": "Enviar WhatsApp Saída",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true }",
+        "options": {}
+      },
+      "id": "responder-ok-saida",
+      "name": "Responder 200 Saída",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 500]
+    }
+  ],
+  "connections": {
+    "Webhook SOS Entry": {
+      "main": [[
+        { "node": "Somente Entradas", "type": "main", "index": 0 },
+        { "node": "Somente Saídas",   "type": "main", "index": 0 }
+      ]]
+    },
+    "Somente Entradas":      { "main": [[{ "node": "Montar Mensagem",       "type": "main", "index": 0 }]] },
+    "Montar Mensagem":       { "main": [[{ "node": "Enviar WhatsApp",        "type": "main", "index": 0 }]] },
+    "Enviar WhatsApp":       { "main": [[{ "node": "Responder 200",          "type": "main", "index": 0 }]] },
+    "Somente Saídas":        { "main": [[{ "node": "Montar Mensagem Saída",  "type": "main", "index": 0 }]] },
+    "Montar Mensagem Saída": { "main": [[{ "node": "Enviar WhatsApp Saída",  "type": "main", "index": 0 }]] },
+    "Enviar WhatsApp Saída": { "main": [[{ "node": "Responder 200 Saída",    "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "variables": [],
+  "versionId": "1"
+}
