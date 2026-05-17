@@ -1,35 +1,44 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const { authenticate, requireRole } = require('../middleware/auth.middleware');
 const r = express.Router();
 
 const sendLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, message: { error: 'Limite de envio atingido. Aguarde.' } });
 
-const EVO_URL = process.env.EVOLUTION_API_URL;
-const EVO_KEY = process.env.EVOLUTION_API_KEY;
-const EVO_INST = process.env.EVOLUTION_INSTANCE || 'portaria';
+r.use(authenticate, requireRole('admin'));
+
+function getEvoConfig() {
+  return {
+    url: process.env.EVOLUTION_API_URL,
+    key: process.env.EVOLUTION_API_KEY,
+    inst: process.env.EVOLUTION_INSTANCE || 'portaria',
+  };
+}
 
 async function evoFetch(path, opts = {}) {
-  const res = await fetch(`${EVO_URL}${path}`, {
+  const { url, key } = getEvoConfig();
+  if (!url) throw Object.assign(new Error('Evolution API não configurada (EVOLUTION_API_URL ausente)'), { status: 503 });
+  const res = await fetch(`${url}${path}`, {
     ...opts,
-    headers: { 'apikey': EVO_KEY, 'Content-Type': 'application/json', ...(opts.headers || {}) }
+    headers: { 'apikey': key, 'Content-Type': 'application/json', ...(opts.headers || {}) }
   });
   return res;
 }
 
 r.get('/status', async (req, res) => {
   try {
-    const resp = await evoFetch(`/instance/connectionState/${EVO_INST}`);
-    const data = await resp.json();
-    res.json(data);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    const { inst } = getEvoConfig();
+    const resp = await evoFetch(`/instance/connectionState/${inst}`);
+    res.json(await resp.json());
+  } catch(e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
-r.get('/qrcode', async (req, res) => {
+r.get('/qr', async (req, res) => {
   try {
-    const resp = await evoFetch(`/instance/connect/${EVO_INST}`);
-    const data = await resp.json();
-    res.json(data);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    const { inst } = getEvoConfig();
+    const resp = await evoFetch(`/instance/connect/${inst}`);
+    res.json(await resp.json());
+  } catch(e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
 r.post('/send', sendLimiter, async (req, res) => {
@@ -41,21 +50,21 @@ r.post('/send', sendLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Texto obrigatório' });
     if (text.length > 4096)
       return res.status(400).json({ error: 'Texto muito longo (máx 4096 caracteres)' });
-    const resp = await evoFetch(`/message/sendText/${EVO_INST}`, {
+    const { inst } = getEvoConfig();
+    const resp = await evoFetch(`/message/sendText/${inst}`, {
       method: 'POST',
       body: JSON.stringify({ number, text })
     });
-    const data = await resp.json();
-    res.json(data);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    res.json(await resp.json());
+  } catch(e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
 r.delete('/logout', async (req, res) => {
   try {
-    const resp = await evoFetch(`/instance/logout/${EVO_INST}`, { method: 'DELETE' });
-    const data = await resp.json();
-    res.json(data);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    const { inst } = getEvoConfig();
+    const resp = await evoFetch(`/instance/logout/${inst}`, { method: 'DELETE' });
+    res.json(await resp.json());
+  } catch(e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
 module.exports = r;
