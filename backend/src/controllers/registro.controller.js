@@ -38,14 +38,24 @@ exports.criar = async (req, res, next) => {
 exports.saida = async (req, res, next) => {
   try {
     const { protocolo } = req.params;
+    const { lacre, obsOcorrencia } = req.body || {};
     const reg = await prisma.registro.findUnique({ where:{ protocolo } });
     if (!reg) return res.status(404).json({ error: 'Protocolo não encontrado' });
     if (reg.status === 'saiu') return res.status(400).json({ error: 'Saída já registrada' });
-    const updated = await prisma.registro.update({ where:{ protocolo },
-      data:{ horaSaida: new Date(), status:'saiu', operadorSaidaId: req.user.id } });
+    const updated = await prisma.registro.update({
+      where: { protocolo },
+      data: {
+        horaSaida: new Date(),
+        status: 'saiu',
+        operadorSaidaId: req.user.id,
+        ...(lacre        && { lacre }),
+        ...(obsOcorrencia && { obsOcorrencia }),
+      },
+      include: { portaria: true, operadorEntrada: { select: { nome: true } }, operadorSaida: { select: { nome: true } } }
+    });
     evo.enviarSaida(updated).catch(e => console.error('Evo saída erro:', e.message));
     webhookSvc.disparar('saida', updated).catch(e => console.error('Webhook saída erro:', e.message));
-    res.json({ ok: true, horaSaida: updated.horaSaida });
+    res.json(updated);
   } catch(e){ next(e); }
 };
 
