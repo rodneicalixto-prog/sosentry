@@ -27,7 +27,20 @@ Sistema de controle de entrada e saída de veículos em portarias industriais co
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/rodneicalixto-prog/sosentry/main/infra/setup.sh)"
 ```
 
-O script instala Docker automaticamente, clona o repositório, configura o `.env` de forma interativa, faz o build e sobe os containers.
+O script executa automaticamente:
+1. Instala o Docker (se não estiver instalado)
+2. Clona o repositório em `/opt/sosentry`
+3. Solicita as variáveis de ambiente interativamente (DATABASE_URL, JWT secrets, Evolution API, etc.)
+4. Gera JWT secrets automaticamente via `openssl`
+5. Faz o build dos containers
+6. Sobe o sistema na porta **80**
+7. Executa o seed inicial (cria portarias + usuário superadmin)
+
+Após subir, acesse `http://IP-DA-VPS` e faça login com:
+- **Usuário:** `superadmin`
+- **Senha:** a definida em `SEED_SUPERADMIN_SENHA` durante a instalação
+
+> **Segunda VPS ou mais:** o mesmo comando funciona em qualquer servidor — a imagem Docker é portável (sem URL hardcoded), o nginx faz o proxy internamente.
 
 ---
 
