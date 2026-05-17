@@ -183,17 +183,18 @@ export default function NovaEntrada() {
 
             <div>
               <label className="label" htmlFor="cpfMotorista">
-                CPF
+                CPF <span className="text-red-500">*</span>
               </label>
               <input
                 id="cpfMotorista"
                 type="text"
-                className="input"
+                className={`input ${errors.cpfMotorista ? 'border-red-400' : ''}`}
                 placeholder="000.000.000-00"
                 maxLength={14}
-                {...register('cpfMotorista')}
+                {...register('cpfMotorista', { required: 'Informe o CPF do motorista' })}
                 onChange={handleCPFMotorista}
               />
+              <InputError message={errors.cpfMotorista?.message} />
             </div>
 
             <div>

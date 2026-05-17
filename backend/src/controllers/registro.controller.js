@@ -38,7 +38,7 @@ exports.criar = async (req, res, next) => {
     const ajTel  = d.telefoneAjudante || d.ajudanteTelefone || null
     const ajRg   = d.rgAjudante   || d.ajudanteRg   || null
 
-    const obrigatorios = { portariaId: d.portariaId, nomeMotorista: nome, placa: d.placa, tipoVeiculo: d.tipoVeiculo, tipoOperacao: d.tipoOperacao }
+    const obrigatorios = { portariaId: d.portariaId, nomeMotorista: nome, cpfMotorista: cpf, placa: d.placa, tipoVeiculo: d.tipoVeiculo, tipoOperacao: d.tipoOperacao }
     const ausentes = Object.entries(obrigatorios).filter(([, v]) => !v).map(([k]) => k)
     if (ausentes.length) return res.status(400).json({ error: `Campos obrigatórios ausentes: ${ausentes.join(', ')}` })
     if (nome.length > 150) return res.status(400).json({ error: 'Nome muito longo' })
@@ -47,7 +47,7 @@ exports.criar = async (req, res, next) => {
     if (d.tipoMaterial?.length > 100) return res.status(400).json({ error: 'Tipo de material muito longo (máx 100 chars)' })
     if (d.obsMaterial?.length > 500) return res.status(400).json({ error: 'Observação de material muito longa (máx 500 chars)' })
     if (d.obsGeral?.length > 2000) return res.status(400).json({ error: 'Observação geral muito longa (máx 2000 chars)' })
-    if (cpf && !validarCPF(cpf)) return res.status(400).json({ error: 'CPF inválido' })
+    if (!validarCPF(cpf)) return res.status(400).json({ error: 'CPF inválido' })
     if (d.temAjudante && !ajNome) return res.status(400).json({ error: 'Nome do ajudante obrigatório' })
     if (ajCpf && !validarCPF(ajCpf)) return res.status(400).json({ error: 'CPF do ajudante inválido' })
     if (telefone && !validarTelefone(telefone)) return res.status(400).json({ error: 'Telefone do motorista inválido (10–15 dígitos)' })
