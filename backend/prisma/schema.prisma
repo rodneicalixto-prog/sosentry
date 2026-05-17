@@ -122,5 +122,8 @@ model AuditLog {
   ip         String?
   createdAt  DateTime @default(now()) @map("created_at")
   user User @relation(fields: [userId], references: [id])
+  @@index([userId])
+  @@index([acao])
+  @@index([createdAt])
   @@map("audit_logs")
 }

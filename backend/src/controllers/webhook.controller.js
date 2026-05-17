@@ -7,8 +7,13 @@ const EVENTOS_VALIDOS = ['entrada', 'saida', 'cancelado'];
 
 exports.listar = async (req, res, next) => {
   try {
-    const webhooks = await prisma.webhook.findMany({ orderBy: { createdAt: 'desc' } });
-    res.json(webhooks);
+    const { page = 1, limit = 50 } = req.query
+    const skip = (Number(page) - 1) * Number(limit)
+    const [webhooks, total] = await Promise.all([
+      prisma.webhook.findMany({ skip, take: Number(limit), orderBy: { createdAt: 'desc' } }),
+      prisma.webhook.count()
+    ])
+    res.json({ webhooks, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) });
   } catch (e) { next(e); }
 };
 

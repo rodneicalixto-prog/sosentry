@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Users, LogIn, LogOut, BarChart2, PlusCircle, RefreshCw } from 'lucide-react'
 import api from '../api/client'
 import StatusBadge from '../components/StatusBadge'
@@ -38,6 +38,7 @@ function StatCard({ icon: Icon, label, value, color }) {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const [resumo, setResumo] = useState(null)
   const [registros, setRegistros] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -47,16 +48,23 @@ export default function Dashboard() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     setError('')
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
     try {
       const [resResumo, resRegistros] = await Promise.all([
-        api.get('/api/dashboard/resumo'),
-        api.get('/api/registros', { params: { page: 1, limit: 10 } }),
+        api.get('/api/dashboard/resumo', { signal: controller.signal }),
+        api.get('/api/registros', { params: { page: 1, limit: 10 }, signal: controller.signal }),
       ])
       setResumo(resResumo.data)
       setRegistros(resRegistros.data.registros || [])
     } catch (err) {
-      setError('Erro ao carregar dados do dashboard.')
+      if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+        setError('Tempo esgotado ao carregar dados. Tente novamente.')
+      } else {
+        setError('Erro ao carregar dados do dashboard.')
+      }
     } finally {
+      clearTimeout(timeout)
       setLoading(false)
     }
   }, [])
@@ -147,7 +155,7 @@ export default function Dashboard() {
                 <div
                   key={r.id}
                   className="flex items-start justify-between gap-3 p-4 active:bg-gray-50 cursor-pointer"
-                  onClick={() => (window.location.href = `/registros/${r.id}`)}
+                  onClick={() => navigate(`/registros/${r.id}`)}
                 >
                   <div className="min-w-0">
                     <p className="font-semibold text-gray-900 truncate">{r.nomeMotorista}</p>
@@ -177,7 +185,7 @@ export default function Dashboard() {
                     <tr
                       key={r.id}
                       className="hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => (window.location.href = `/registros/${r.id}`)}
+                      onClick={() => navigate(`/registros/${r.id}`)}
                     >
                       <td className="table-td font-mono text-xs">{r.protocolo}</td>
                       <td className="table-td text-xs whitespace-nowrap">{formatDateTime(r.dataEntrada)}</td>

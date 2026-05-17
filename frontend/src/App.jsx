@@ -5,6 +5,7 @@ import { RealtimeProvider } from './contexts/RealtimeContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 
+import ErrorBoundary from './components/ErrorBoundary'
 import InstallBanner from './components/InstallBanner'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -19,6 +20,7 @@ import RegistrarSaida from './pages/RegistrarSaida'
 export default function App() {
   return (
     <BrowserRouter>
+      <ErrorBoundary>
       <AuthProvider>
       <RealtimeProvider>
         <Routes>
@@ -83,6 +85,7 @@ export default function App() {
         <InstallBanner />
       </RealtimeProvider>
       </AuthProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }

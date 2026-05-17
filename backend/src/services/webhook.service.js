@@ -53,10 +53,14 @@ function postar(url, body, headers) {
   });
 }
 
-// Máximo de 5 disparos simultâneos
+// Máximo de 5 disparos simultâneos e fila limitada a 500 itens
 let emFlight = 0
 const queue = []
 function enqueue(fn) {
+  if (queue.length >= 500) {
+    console.warn('[webhook] fila cheia, descartando evento')
+    return Promise.resolve()
+  }
   return new Promise((resolve, reject) => {
     queue.push({ fn, resolve, reject })
     drain()
@@ -67,6 +71,18 @@ function drain() {
     const { fn, resolve, reject } = queue.shift()
     emFlight++
     fn().then(resolve, reject).finally(() => { emFlight--; drain() })
+  }
+}
+
+async function postarComRetry(url, payload, headers, tentativa = 1) {
+  try {
+    return await postar(url, payload, headers)
+  } catch (e) {
+    if (tentativa < 3) {
+      await new Promise(r => setTimeout(r, Math.pow(2, tentativa) * 1000))
+      return postarComRetry(url, payload, headers, tentativa + 1)
+    }
+    throw e
   }
 }
 
@@ -88,9 +104,9 @@ async function disparar(evento, dados) {
     const headers = { 'X-SOS-Event': evento, 'X-SOS-Webhook-Id': wh.id };
     if (wh.secret) headers['X-SOS-Signature'] = assinar(payload, wh.secret);
 
-    enqueue(() => postar(wh.url, payload, headers))
-      .then(r => console.log(`[webhook] ${wh.nome} status=${r.status}`))
-      .catch(e => console.error(`[webhook] ${wh.nome} erro: ${e.message}`));
+    enqueue(() => postarComRetry(wh.url, payload, headers))
+      .then(r => r && console.log(`[webhook] ${wh.nome} status=${r.status}`))
+      .catch(e => console.error(`[webhook] ${wh.nome} erro após retries: ${e.message}`));
   }
 }
 

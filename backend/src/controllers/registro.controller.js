@@ -12,6 +12,11 @@ function gerarProtocolo(num) {
 exports.criar = async (req, res, next) => {
   try {
     const d = req.body;
+    const obrigatorios = ['portariaId', 'nome', 'cpf', 'placa', 'tipoVeiculo', 'tipoOperacao', 'dataEntrada']
+    const ausentes = obrigatorios.filter(k => !d[k])
+    if (ausentes.length) return res.status(400).json({ error: `Campos obrigatórios ausentes: ${ausentes.join(', ')}` })
+    if (d.nome.length > 150) return res.status(400).json({ error: 'Nome muito longo' })
+    if (d.empresa?.length > 150) return res.status(400).json({ error: 'Empresa muito longa' })
     const portaria = await prisma.portaria.findUnique({ where: { id: d.portariaId } });
     if (!portaria) return res.status(404).json({ error: 'Portaria não encontrada' });
     const protocolo = gerarProtocolo(portaria.numero);
@@ -45,6 +50,8 @@ exports.saida = async (req, res, next) => {
   try {
     const { protocolo } = req.params;
     const { lacre, obsOcorrencia } = req.body || {};
+    if (lacre?.length > 50) return res.status(400).json({ error: 'Lacre muito longo (máx 50 chars)' })
+    if (obsOcorrencia?.length > 2000) return res.status(400).json({ error: 'Observação muito longa (máx 2000 chars)' })
     const reg = await prisma.registro.findUnique({ where:{ protocolo } });
     if (!reg) return res.status(404).json({ error: 'Protocolo não encontrado' });
     if (reg.status === 'saiu') return res.status(400).json({ error: 'Saída já registrada' });

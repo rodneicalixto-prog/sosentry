@@ -1,4 +1,4 @@
-const BASE = 'https://evogo.sosbot.online';
+const BASE = process.env.EVOLUTION_API_URL || 'https://evogo.sosbot.online';
 const KEY  = process.env.EVOLUTION_API_KEY;
 const INST = process.env.EVOLUTION_INSTANCE;
 const RESP = process.env.WHATSAPP_RESPONSAVEL;

@@ -20,8 +20,19 @@ app.use(morgan((tokens, req, res) => {
 }));
 app.use(express.json({ limit: '1mb' }));
 app.use(rateLimit({ windowMs: 15*60*1000, max: 300 }));
-app.use('/api/auth/login', rateLimit({ windowMs: 15*60*1000, max: 10 }));
+app.use('/api/auth/login', rateLimit({ windowMs: 15*60*1000, max: 5 }));
 app.use('/api/registros', rateLimit({ windowMs: 60*60*1000, max: 200, skip: (req) => req.method !== 'POST' }));
+
+// Proteção CSRF: rejeita requisições de origens não autorizadas
+app.use((req, res, next) => {
+  if (['POST','PATCH','DELETE','PUT'].includes(req.method)) {
+    const origin = req.headers.origin
+    if (origin && origin !== process.env.FRONTEND_URL) {
+      return res.status(403).json({ error: 'Origem não permitida' })
+    }
+  }
+  next()
+});
 
 app.use('/api/auth',      require('./routes/auth.routes'));
 app.use('/api/users',     require('./routes/user.routes'));
@@ -32,7 +43,17 @@ app.use('/api/whatsapp',  require('./routes/whatsapp.routes'));
 app.use('/api/webhooks', require('./routes/webhook.routes'));
 app.use('/api/eventos',  require('./routes/eventos.routes'));
 
-app.get('/health', (_, res) => res.json({ ok: true, app: 'SOS Entry', ts: new Date() }));
+app.get('/health', async (_, res) => {
+  try {
+    const { PrismaClient } = require('@prisma/client')
+    const p = new PrismaClient()
+    await p.$queryRaw`SELECT 1`
+    await p.$disconnect()
+    res.json({ ok: true, app: 'SOS Entry', db: 'ok', ts: new Date() })
+  } catch (e) {
+    res.status(503).json({ ok: false, app: 'SOS Entry', db: 'error', error: e.message })
+  }
+});
 
 app.use((err, req, res, next) => {
   console.error(err);
