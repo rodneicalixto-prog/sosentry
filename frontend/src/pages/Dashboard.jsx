@@ -66,21 +66,17 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">Visão geral do controle de portaria</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="btn-secondary btn-sm"
-          >
+          <button onClick={fetchData} disabled={loading} className="btn-secondary btn-sm">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
+            <span className="hidden sm:inline">Atualizar</span>
           </button>
-          <Link to="/registros/novo" className="btn-accent">
+          <Link to="/registros/novo" className="btn-accent flex-1 sm:flex-none justify-center">
             <PlusCircle className="w-4 h-4" />
             Nova Entrada
           </Link>
@@ -137,38 +133,57 @@ export default function Dashboard() {
         ) : registros.length === 0 ? (
           <div className="text-center py-12 text-gray-400 text-sm">Nenhum registro encontrado.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr>
-                  <th className="table-th">Protocolo</th>
-                  <th className="table-th">Data/Hora</th>
-                  <th className="table-th hidden sm:table-cell">Motorista</th>
-                  <th className="table-th hidden md:table-cell">Placa</th>
-                  <th className="table-th hidden lg:table-cell">Empresa</th>
-                  <th className="table-th">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {registros.map((r) => (
-                  <tr
-                    key={r.id}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => (window.location.href = `/registros/${r.id}`)}
-                  >
-                    <td className="table-td font-mono text-xs">{r.protocolo}</td>
-                    <td className="table-td text-xs">{formatDateTime(r.createdAt || r.dataEntrada)}</td>
-                    <td className="table-td hidden sm:table-cell">{r.nomeMotorista}</td>
-                    <td className="table-td hidden md:table-cell font-mono">{r.placa}</td>
-                    <td className="table-td hidden lg:table-cell">{r.empresa}</td>
-                    <td className="table-td">
-                      <StatusBadge status={r.status} />
-                    </td>
+          <>
+            {/* Mobile: cards */}
+            <div className="divide-y divide-gray-100 sm:hidden">
+              {registros.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex items-start justify-between gap-3 p-4 active:bg-gray-50 cursor-pointer"
+                  onClick={() => (window.location.href = `/registros/${r.id}`)}
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">{r.nomeMotorista}</p>
+                    <p className="text-xs font-mono text-gray-400 mt-0.5">{r.protocolo}</p>
+                    <p className="text-xs text-gray-500 mt-1">{r.placa}{r.empresa ? ` · ${r.empresa}` : ''}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{formatDateTime(r.dataEntrada)}</p>
+                  </div>
+                  <StatusBadge status={r.status} />
+                </div>
+              ))}
+            </div>
+            {/* Tablet/Desktop: tabela */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr>
+                    <th className="table-th">Protocolo</th>
+                    <th className="table-th">Data/Hora</th>
+                    <th className="table-th">Motorista</th>
+                    <th className="table-th hidden md:table-cell">Placa</th>
+                    <th className="table-th hidden lg:table-cell">Empresa</th>
+                    <th className="table-th">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {registros.map((r) => (
+                    <tr
+                      key={r.id}
+                      className="hover:bg-gray-50 cursor-pointer transition-colors"
+                      onClick={() => (window.location.href = `/registros/${r.id}`)}
+                    >
+                      <td className="table-td font-mono text-xs">{r.protocolo}</td>
+                      <td className="table-td text-xs whitespace-nowrap">{formatDateTime(r.dataEntrada)}</td>
+                      <td className="table-td">{r.nomeMotorista}</td>
+                      <td className="table-td hidden md:table-cell font-mono text-xs">{r.placa}</td>
+                      <td className="table-td hidden lg:table-cell">{r.empresa || '—'}</td>
+                      <td className="table-td"><StatusBadge status={r.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

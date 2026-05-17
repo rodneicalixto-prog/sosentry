@@ -116,20 +116,23 @@ export default function Registros() {
           </select>
 
           {/* Date range */}
-          <input
-            type="date"
-            value={dataInicio}
-            onChange={(e) => setDataInicio(e.target.value)}
-            className="input w-full sm:w-auto"
-            title="Data início"
-          />
-          <input
-            type="date"
-            value={dataFim}
-            onChange={(e) => setDataFim(e.target.value)}
-            className="input w-full sm:w-auto"
-            title="Data fim"
-          />
+          <div className="flex gap-2 w-full sm:w-auto">
+            <input
+              type="date"
+              value={dataInicio}
+              onChange={(e) => setDataInicio(e.target.value)}
+              className="input flex-1 sm:w-36"
+              title="Data início"
+            />
+            <span className="self-center text-gray-400 text-sm">até</span>
+            <input
+              type="date"
+              value={dataFim}
+              onChange={(e) => setDataFim(e.target.value)}
+              className="input flex-1 sm:w-36"
+              title="Data fim"
+            />
+          </div>
 
           <button type="submit" className="btn-primary">
             <Search className="w-4 h-4" />
@@ -162,44 +165,63 @@ export default function Registros() {
             Nenhum registro encontrado para os filtros aplicados.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr>
-                  <th className="table-th">Protocolo</th>
-                  <th className="table-th">Data/Hora</th>
-                  <th className="table-th hidden sm:table-cell">Portaria</th>
-                  <th className="table-th">Motorista</th>
-                  <th className="table-th hidden md:table-cell">Placa</th>
-                  <th className="table-th hidden lg:table-cell">Empresa</th>
-                  <th className="table-th">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {registros.map((r) => (
-                  <tr
-                    key={r.id}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/registros/${r.id}`)}
-                  >
-                    <td className="table-td font-mono text-xs">{r.protocolo}</td>
-                    <td className="table-td text-xs whitespace-nowrap">
-                      {formatDateTime(r.createdAt || r.dataEntrada)}
-                    </td>
-                    <td className="table-td hidden sm:table-cell text-xs">
-                      {r.portaria?.nome || r.portariaNome || '—'}
-                    </td>
-                    <td className="table-td">{r.nomeMotorista}</td>
-                    <td className="table-td hidden md:table-cell font-mono text-xs">{r.placa}</td>
-                    <td className="table-td hidden lg:table-cell">{r.empresa || '—'}</td>
-                    <td className="table-td">
-                      <StatusBadge status={r.status} />
-                    </td>
+          <>
+            {/* Mobile: cards */}
+            <div className="divide-y divide-gray-100 sm:hidden">
+              {registros.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex items-start justify-between gap-3 p-4 active:bg-gray-50 cursor-pointer"
+                  onClick={() => navigate(`/registros/${r.id}`)}
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">{r.nomeMotorista}</p>
+                    <p className="text-xs font-mono text-gray-400 mt-0.5">{r.protocolo}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {r.placa} · {r.tipoVeiculo}
+                      {r.empresa ? ` · ${r.empresa}` : ''}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">{formatDateTime(r.dataEntrada)}</p>
+                  </div>
+                  <StatusBadge status={r.status} />
+                </div>
+              ))}
+            </div>
+
+            {/* Tablet/Desktop: tabela */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr>
+                    <th className="table-th">Protocolo</th>
+                    <th className="table-th">Data/Hora</th>
+                    <th className="table-th">Motorista</th>
+                    <th className="table-th hidden md:table-cell">Placa</th>
+                    <th className="table-th hidden lg:table-cell">Portaria</th>
+                    <th className="table-th hidden lg:table-cell">Empresa</th>
+                    <th className="table-th">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {registros.map((r) => (
+                    <tr
+                      key={r.id}
+                      className="hover:bg-gray-50 cursor-pointer transition-colors"
+                      onClick={() => navigate(`/registros/${r.id}`)}
+                    >
+                      <td className="table-td font-mono text-xs">{r.protocolo}</td>
+                      <td className="table-td text-xs whitespace-nowrap">{formatDateTime(r.dataEntrada)}</td>
+                      <td className="table-td">{r.nomeMotorista}</td>
+                      <td className="table-td hidden md:table-cell font-mono text-xs">{r.placa}</td>
+                      <td className="table-td hidden lg:table-cell text-xs">{r.portaria?.nome || '—'}</td>
+                      <td className="table-td hidden lg:table-cell">{r.empresa || '—'}</td>
+                      <td className="table-td"><StatusBadge status={r.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         {/* Pagination */}

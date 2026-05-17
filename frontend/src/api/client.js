@@ -1,6 +1,8 @@
 import axios from 'axios'
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+// Em produção (Docker) o nginx proxia /api → backend, então BASE_URL é vazio (mesma origem).
+// Em dev o vite.config.js faz o proxy. Só defina VITE_API_URL para apontar para host externo.
+const BASE_URL = import.meta.env.VITE_API_URL || ''
 
 const api = axios.create({
   baseURL: BASE_URL,

@@ -2,17 +2,22 @@ version: '3.9'
 
 services:
   backend:
-    build: ../backend
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
     container_name: sosentry-backend
     restart: unless-stopped
     env_file: ../backend/.env
-    ports:
-      - "3001:3001"
+    expose:
+      - "3001"
+    networks:
+      - sosentry
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-      interval: 30s
-      timeout: 10s
+      interval: 20s
+      timeout: 5s
       retries: 3
+      start_period: 10s
 
   frontend:
     build:
@@ -21,7 +26,13 @@ services:
     container_name: sosentry-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${PORT:-80}:80"
+    networks:
+      - sosentry
     depends_on:
       backend:
         condition: service_healthy
+
+networks:
+  sosentry:
+    driver: bridge
