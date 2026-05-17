@@ -2,7 +2,7 @@ import React from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
-export default function ProtectedRoute({ children, minRole }) {
+export default function ProtectedRoute({ children, minRole, fallback }) {
   const { user, loading, hasRole } = useAuth()
   const location = useLocation()
 
@@ -22,7 +22,7 @@ export default function ProtectedRoute({ children, minRole }) {
   }
 
   if (minRole && !hasRole(minRole)) {
-    return <Navigate to="/" replace />
+    return <Navigate to={fallback || '/saida'} replace />
   }
 
   return children

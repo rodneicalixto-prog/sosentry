@@ -11,6 +11,8 @@ import NovaEntrada from './pages/NovaEntrada'
 import RegistroDetalhe from './pages/RegistroDetalhe'
 import Usuarios from './pages/admin/Usuarios'
 import Webhooks from './pages/admin/Webhooks'
+import Whatsapp from './pages/admin/Whatsapp'
+import RegistrarSaida from './pages/RegistrarSaida'
 
 export default function App() {
   return (
@@ -44,6 +46,7 @@ export default function App() {
             />
             <Route path="/registros/novo" element={<NovaEntrada />} />
             <Route path="/registros/:id" element={<RegistroDetalhe />} />
+            <Route path="/saida" element={<RegistrarSaida />} />
 
             <Route
               path="/admin/usuarios"
@@ -58,6 +61,14 @@ export default function App() {
               element={
                 <ProtectedRoute minRole="admin">
                   <Webhooks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/whatsapp"
+              element={
+                <ProtectedRoute minRole="admin">
+                  <Whatsapp />
                 </ProtectedRoute>
               }
             />

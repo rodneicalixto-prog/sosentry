@@ -4,8 +4,10 @@ import {
   LayoutDashboard,
   ClipboardList,
   PlusCircle,
+  LogOut as LogOutIcon,
   Users,
   Webhook,
+  MessageCircle,
   LogOut,
   X,
   ShieldCheck,
@@ -16,11 +18,13 @@ const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, minRole: 'supervisor', exact: true },
   { to: '/registros', label: 'Registros', icon: ClipboardList, minRole: 'supervisor' },
   { to: '/registros/novo', label: 'Nova Entrada', icon: PlusCircle, minRole: 'operador', accent: true },
+  { to: '/saida', label: 'Registrar Saída', icon: LogOutIcon, minRole: 'operador' },
 ]
 
 const ADMIN_NAV = [
   { to: '/admin/usuarios', label: 'Usuários', icon: Users, minRole: 'admin' },
   { to: '/admin/webhooks', label: 'Webhooks', icon: Webhook, minRole: 'admin' },
+  { to: '/admin/whatsapp', label: 'WhatsApp', icon: MessageCircle, minRole: 'admin' },
 ]
 
 export default function Sidebar({ open, onClose }) {
