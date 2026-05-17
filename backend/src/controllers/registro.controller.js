@@ -9,6 +9,17 @@ function gerarProtocolo(num) {
   return `PRT${num}-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${Math.floor(Math.random()*9000)+1000}`;
 }
 
+function validarCPF(cpf) {
+  const d = cpf.replace(/\D/g, '')
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false
+  let s = 0
+  for (let i = 0; i < 9; i++) s += Number(d[i]) * (10 - i)
+  if (Number(d[9]) !== (s * 10) % 11 % 10) return false
+  s = 0
+  for (let i = 0; i < 10; i++) s += Number(d[i]) * (11 - i)
+  return Number(d[10]) === (s * 10) % 11 % 10
+}
+
 exports.criar = async (req, res, next) => {
   try {
     const d = req.body;
@@ -17,32 +28,52 @@ exports.criar = async (req, res, next) => {
     if (ausentes.length) return res.status(400).json({ error: `Campos obrigatórios ausentes: ${ausentes.join(', ')}` })
     if (d.nome.length > 150) return res.status(400).json({ error: 'Nome muito longo' })
     if (d.empresa?.length > 150) return res.status(400).json({ error: 'Empresa muito longa' })
+    if (!validarCPF(d.cpf)) return res.status(400).json({ error: 'CPF inválido' })
+
     const portaria = await prisma.portaria.findUnique({ where: { id: d.portariaId } });
     if (!portaria) return res.status(404).json({ error: 'Portaria não encontrada' });
-    const protocolo = gerarProtocolo(portaria.numero);
+
     const dtEntrada = new Date(`${d.dataEntrada}T${d.horaEntrada||'00:00'}:00`);
-    const registro = await prisma.registro.create({ data: {
-      protocolo, portariaId: d.portariaId, operadorEntradaId: req.user.id,
+    const dados = {
+      portariaId: d.portariaId, operadorEntradaId: req.user.id,
       nomeMotorista: d.nome, cpfMotorista: d.cpf, telefoneMotorista: d.telefone,
-      placa: d.placa.toUpperCase(), tipoVeiculo: d.tipoVeiculo,
-      empresa: d.empresa||null, notaFiscal: d.notaFiscal||null,
+      placa: d.placa.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^([A-Z]{3})(\d.*)$/, '$1-$2'),
+      tipoVeiculo: d.tipoVeiculo, empresa: d.empresa||null, notaFiscal: d.notaFiscal||null,
       tipoOperacao: d.tipoOperacao, tipoMaterial: d.tipoMaterial||null,
       obsMaterial: d.obsMaterial||null, obsGeral: d.obsGeral||null,
       temAjudante: !!d.temAjudante,
       ajudanteNome: d.ajudanteNome||null, ajudanteCpf: d.ajudanteCpf||null,
       ajudanteTelefone: d.ajudanteTelefone||null, ajudanteRg: d.ajudanteRg||null,
       dataEntrada: dtEntrada
-    }, include: { portaria:true, operadorEntrada:{ select:{ nome:true, turno:true } } } });
+    }
+
+    // Retry em caso raro de colisão de protocolo (unique constraint P2002)
+    let registro
+    for (let tentativa = 0; tentativa < 3; tentativa++) {
+      const protocolo = gerarProtocolo(portaria.numero)
+      try {
+        registro = await prisma.registro.create({
+          data: { protocolo, ...dados },
+          include: { portaria: true, operadorEntrada: { select: { nome: true, turno: true } } }
+        })
+        break
+      } catch (e) {
+        if (e.code !== 'P2002' || tentativa === 2) throw e
+      }
+    }
+
     evo.enviarEntrada(registro).catch(e => console.error('Evo erro:', e.message));
     webhookSvc.disparar('entrada', registro).catch(e => console.error('Webhook entrada erro:', e.message));
     sseSvc.broadcast('entrada', {
-      protocolo, placa: registro.placa, nomeMotorista: registro.nomeMotorista,
-      empresa: registro.empresa, portaria: registro.portaria?.nome, tipoVeiculo: registro.tipoVeiculo,
-      operador: req.user.nome
+      protocolo: registro.protocolo, placa: registro.placa, nomeMotorista: registro.nomeMotorista,
+      empresa: registro.empresa, portaria: registro.portaria?.nome,
+      tipoVeiculo: registro.tipoVeiculo, operador: req.user.nome
     });
-    await prisma.auditLog.create({ data:{ userId: req.user.id, acao:'CRIAR_REGISTRO',
-      entidade:'registro', entidadeId: registro.id, detalhes:{ protocolo, placa: d.placa } } });
-    res.status(201).json({ protocolo, registro });
+    await prisma.auditLog.create({ data: {
+      userId: req.user.id, acao: 'CRIAR_REGISTRO',
+      entidade: 'registro', entidadeId: registro.id, detalhes: { protocolo: registro.protocolo }
+    }});
+    res.status(201).json({ protocolo: registro.protocolo, registro });
   } catch(e){ next(e); }
 };
 
@@ -58,10 +89,8 @@ exports.saida = async (req, res, next) => {
     const updated = await prisma.registro.update({
       where: { protocolo },
       data: {
-        horaSaida: new Date(),
-        status: 'saiu',
-        operadorSaidaId: req.user.id,
-        ...(lacre        && { lacre }),
+        horaSaida: new Date(), status: 'saiu', operadorSaidaId: req.user.id,
+        ...(lacre         && { lacre }),
         ...(obsOcorrencia && { obsOcorrencia }),
       },
       include: { portaria: true, operadorEntrada: { select: { nome: true } }, operadorSaida: { select: { nome: true } } }
@@ -93,10 +122,10 @@ exports.listar = async (req, res, next) => {
       ];
     }
     if (dataInicio||dataFim) {
-      const inicio = dataInicio ? new Date(dataInicio) : null
-      const fim    = dataFim    ? new Date(dataFim)    : null
+      const inicio = dataInicio ? new Date(dataInicio + 'T00:00:00Z') : null
+      const fim    = dataFim    ? new Date(dataFim    + 'T23:59:59Z') : null
       if ((inicio && isNaN(inicio)) || (fim && isNaN(fim)))
-        return res.status(400).json({ error: 'Data inválida' })
+        return res.status(400).json({ error: 'Data inválida (use YYYY-MM-DD)' })
       if (inicio && fim && inicio > fim)
         return res.status(400).json({ error: 'Data início não pode ser maior que data fim' })
       where.dataEntrada = {}
