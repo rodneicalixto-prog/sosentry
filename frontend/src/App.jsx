@@ -5,6 +5,7 @@ import { RealtimeProvider } from './contexts/RealtimeContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 
+import InstallBanner from './components/InstallBanner'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Registros from './pages/Registros'
@@ -79,6 +80,7 @@ export default function App() {
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <InstallBanner />
       </RealtimeProvider>
       </AuthProvider>
     </BrowserRouter>
