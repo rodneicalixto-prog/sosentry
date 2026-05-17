@@ -25,7 +25,7 @@ export default function Whatsapp() {
     setCarregando(true)
     setQr(null)
     try {
-      const { data } = await api.get('/api/dashboard/whatsapp/status')
+      const { data } = await api.get('/api/whatsapp/status')
       setStatus(data?.instance?.state || data?.state || 'unknown')
     } catch { setStatus('error') }
     finally { setCarregando(false) }
@@ -34,7 +34,7 @@ export default function Whatsapp() {
   async function gerarQr() {
     setCarregando(true)
     try {
-      const { data } = await api.get('/api/dashboard/whatsapp/qr')
+      const { data } = await api.get('/api/whatsapp/qr')
       setQr(data?.qrcode?.base64 || data?.base64 || null)
       if (!qr) setFeedback({ tipo: 'info', msg: 'QR gerado. Escaneie com o WhatsApp.' })
     } catch { setFeedback({ tipo: 'erro', msg: 'Erro ao gerar QR Code.' }) }
@@ -44,7 +44,7 @@ export default function Whatsapp() {
   async function desconectar() {
     if (!confirm('Desconectar o WhatsApp desta instância?')) return
     try {
-      await api.delete('/api/dashboard/whatsapp/logout')
+      await api.delete('/api/whatsapp/logout')
       setStatus('close')
       setQr(null)
       setFeedback({ tipo: 'ok', msg: 'WhatsApp desconectado.' })
@@ -56,7 +56,7 @@ export default function Whatsapp() {
     if (!numero || !mensagem) return
     setEnviando(true)
     try {
-      await api.post('/api/dashboard/whatsapp/send', {
+      await api.post('/api/whatsapp/send', {
         number: numero.replace(/\D/g, ''),
         text: mensagem,
       })
