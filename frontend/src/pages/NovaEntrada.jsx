@@ -60,6 +60,9 @@ export default function NovaEntrada() {
       cpfAjudante: '',
       telefoneAjudante: '',
       rgAjudante: '',
+      setorDestino: '',
+      falarCom: '',
+      autorizadoPor: '',
     },
   })
 
@@ -69,6 +72,10 @@ export default function NovaEntrada() {
       .then(({ data }) => setPortarias(data))
       .catch(() => setPortarias([]))
   }, [])
+
+  const portariaId = watch('portariaId')
+  const portariaSelecionada = portarias.find(p => p.id === portariaId)
+  const isPedestre = portariaSelecionada?.tipo === 'pedestres'
 
   const handleCPFMotorista = (e) => {
     setValue('cpfMotorista', formatCPF(e.target.value), { shouldValidate: false })
@@ -119,7 +126,9 @@ export default function NovaEntrada() {
         </button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Nova Entrada</h1>
-          <p className="text-sm text-gray-500">Registro de entrada de veículo</p>
+          <p className="text-sm text-gray-500">
+            {isPedestre ? 'Registro de entrada de visitante' : 'Registro de entrada de veículo'}
+          </p>
         </div>
       </div>
 
@@ -163,10 +172,10 @@ export default function NovaEntrada() {
           </div>
         </div>
 
-        {/* Motorista */}
+        {/* Motorista / Visitante */}
         <div className="card p-5 space-y-4">
           <h2 className="text-base font-semibold text-gray-800 border-b border-gray-100 pb-2">
-            Motorista
+            {isPedestre ? 'Visitante' : 'Motorista'}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
@@ -178,7 +187,7 @@ export default function NovaEntrada() {
                 type="text"
                 className={`input ${errors.nomeMotorista ? 'border-red-400' : ''}`}
                 placeholder="Nome completo"
-                {...register('nomeMotorista', { required: 'Informe o nome do motorista' })}
+                {...register('nomeMotorista', { required: isPedestre ? 'Informe o nome do visitante' : 'Informe o nome do motorista' })}
               />
               <InputError message={errors.nomeMotorista?.message} />
             </div>
@@ -214,49 +223,103 @@ export default function NovaEntrada() {
           </div>
         </div>
 
-        {/* Veículo */}
-        <div className="card p-5 space-y-4">
-          <h2 className="text-base font-semibold text-gray-800 border-b border-gray-100 pb-2">
-            Veículo
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="label" htmlFor="placa">
-                Placa <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="placa"
-                type="text"
-                className={`input font-mono uppercase ${errors.placa ? 'border-red-400' : ''}`}
-                placeholder="ABC-1234"
-                maxLength={8}
-                {...register('placa', { required: 'Informe a placa' })}
-                onChange={handlePlaca}
-              />
-              <InputError message={errors.placa?.message} />
-            </div>
+        {/* Veículo (apenas transportes) */}
+        {!isPedestre && (
+          <div className="card p-5 space-y-4">
+            <h2 className="text-base font-semibold text-gray-800 border-b border-gray-100 pb-2">
+              Veículo
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label" htmlFor="placa">
+                  Placa <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="placa"
+                  type="text"
+                  className={`input font-mono uppercase ${errors.placa ? 'border-red-400' : ''}`}
+                  placeholder="ABC-1234"
+                  maxLength={8}
+                  {...register('placa', { required: !isPedestre ? 'Informe a placa' : false })}
+                  onChange={handlePlaca}
+                />
+                <InputError message={errors.placa?.message} />
+              </div>
 
-            <div>
-              <label className="label" htmlFor="tipoVeiculo">
-                Tipo de Veículo <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="tipoVeiculo"
-                className={`input ${errors.tipoVeiculo ? 'border-red-400' : ''}`}
-                {...register('tipoVeiculo', { required: 'Selecione o tipo de veículo' })}
-              >
-                <option value="">Selecione…</option>
-                <option value="Caminhão">Caminhão</option>
-                <option value="Carreta">Carreta</option>
-                <option value="Van">Van</option>
-                <option value="Carro">Carro</option>
-                <option value="Moto">Moto</option>
-                <option value="Outro">Outro</option>
-              </select>
-              <InputError message={errors.tipoVeiculo?.message} />
+              <div>
+                <label className="label" htmlFor="tipoVeiculo">
+                  Tipo de Veículo <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="tipoVeiculo"
+                  className={`input ${errors.tipoVeiculo ? 'border-red-400' : ''}`}
+                  {...register('tipoVeiculo', { required: !isPedestre ? 'Selecione o tipo de veículo' : false })}
+                >
+                  <option value="">Selecione…</option>
+                  <option value="Caminhão">Caminhão</option>
+                  <option value="Carreta">Carreta</option>
+                  <option value="Van">Van</option>
+                  <option value="Carro">Carro</option>
+                  <option value="Moto">Moto</option>
+                  <option value="Outro">Outro</option>
+                </select>
+                <InputError message={errors.tipoVeiculo?.message} />
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Destino (apenas pedestres) */}
+        {isPedestre && (
+          <div className="card p-5 space-y-4">
+            <h2 className="text-base font-semibold text-gray-800 border-b border-gray-100 pb-2">
+              Destino
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label" htmlFor="setorDestino">
+                  Setor / Departamento destino
+                </label>
+                <input
+                  id="setorDestino"
+                  type="text"
+                  className="input"
+                  placeholder="Ex: RH, Financeiro, Produção…"
+                  maxLength={150}
+                  {...register('setorDestino')}
+                />
+              </div>
+
+              <div>
+                <label className="label" htmlFor="falarCom">
+                  Falar com
+                </label>
+                <input
+                  id="falarCom"
+                  type="text"
+                  className="input"
+                  placeholder="Nome da pessoa ou ramal"
+                  maxLength={150}
+                  {...register('falarCom')}
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="label" htmlFor="autorizadoPor">
+                  Entrada autorizada por
+                </label>
+                <input
+                  id="autorizadoPor"
+                  type="text"
+                  className="input"
+                  placeholder="Nome de quem autorizou a entrada"
+                  maxLength={150}
+                  {...register('autorizadoPor')}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Operação */}
         <div className="card p-5 space-y-4">
@@ -277,19 +340,21 @@ export default function NovaEntrada() {
               />
             </div>
 
-            <div>
-              <label className="label" htmlFor="notaFiscal">
-                Nota Fiscal
-              </label>
-              <input
-                id="notaFiscal"
-                type="text"
-                className="input"
-                placeholder="Número da NF"
-                maxLength={50}
-                {...register('notaFiscal')}
-              />
-            </div>
+            {!isPedestre && (
+              <div>
+                <label className="label" htmlFor="notaFiscal">
+                  Nota Fiscal
+                </label>
+                <input
+                  id="notaFiscal"
+                  type="text"
+                  className="input"
+                  placeholder="Número da NF"
+                  maxLength={50}
+                  {...register('notaFiscal')}
+                />
+              </div>
+            )}
 
             <div>
               <label className="label" htmlFor="tipoOperacao">
@@ -301,74 +366,90 @@ export default function NovaEntrada() {
                 {...register('tipoOperacao', { required: 'Selecione o tipo de operação' })}
               >
                 <option value="">Selecione…</option>
-                <option value="Entrega">Entrega</option>
-                <option value="Coleta">Coleta</option>
-                <option value="Prestação de Serviço">Prestação de Serviço</option>
-                <option value="Outros">Outros</option>
+                {isPedestre ? (
+                  <>
+                    <option value="Visita">Visita</option>
+                    <option value="Reunião">Reunião</option>
+                    <option value="Prestação de Serviço">Prestação de Serviço</option>
+                    <option value="Entrevista">Entrevista</option>
+                    <option value="Outros">Outros</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="Entrega">Entrega</option>
+                    <option value="Coleta">Coleta</option>
+                    <option value="Prestação de Serviço">Prestação de Serviço</option>
+                    <option value="Outros">Outros</option>
+                  </>
+                )}
               </select>
               <InputError message={errors.tipoOperacao?.message} />
             </div>
 
-            <div>
-              <label className="label" htmlFor="tipoMaterial">
-                Tipo de Material
-              </label>
-              <select
-                id="tipoMaterial"
-                className="input"
-                {...register('tipoMaterial')}
-              >
-                <option value="">Selecione…</option>
-                <option value="Embalagem">Embalagem</option>
-                <option value="Matéria Prima">Matéria Prima</option>
-                <option value="Outros">Outros</option>
-              </select>
-            </div>
+            {!isPedestre && (
+              <>
+                <div>
+                  <label className="label" htmlFor="tipoMaterial">
+                    Tipo de Material
+                  </label>
+                  <select
+                    id="tipoMaterial"
+                    className="input"
+                    {...register('tipoMaterial')}
+                  >
+                    <option value="">Selecione…</option>
+                    <option value="Embalagem">Embalagem</option>
+                    <option value="Matéria Prima">Matéria Prima</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                </div>
 
-            <div>
-              <label className="label" htmlFor="tipoEmbalagem">
-                Tipo de Embalagem
-              </label>
-              <select
-                id="tipoEmbalagem"
-                className="input"
-                {...register('tipoEmbalagem')}
-              >
-                <option value="">Selecione…</option>
-                <option value="Paletes">Paletes</option>
-                <option value="Caixas">Caixas</option>
-                <option value="Outros">Outros</option>
-              </select>
-            </div>
+                <div>
+                  <label className="label" htmlFor="tipoEmbalagem">
+                    Tipo de Embalagem
+                  </label>
+                  <select
+                    id="tipoEmbalagem"
+                    className="input"
+                    {...register('tipoEmbalagem')}
+                  >
+                    <option value="">Selecione…</option>
+                    <option value="Paletes">Paletes</option>
+                    <option value="Caixas">Caixas</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                </div>
 
-            <div>
-              <label className="label" htmlFor="quantidade">
-                Quantidade
-              </label>
-              <input
-                id="quantidade"
-                type="number"
-                min="1"
-                className="input"
-                placeholder="Ex: 10"
-                {...register('quantidade', { min: { value: 1, message: 'Mínimo 1' } })}
-              />
-              <InputError message={errors.quantidade?.message} />
-            </div>
+                <div>
+                  <label className="label" htmlFor="quantidade">
+                    Quantidade
+                  </label>
+                  <input
+                    id="quantidade"
+                    type="number"
+                    min="1"
+                    className="input"
+                    placeholder="Ex: 10"
+                    {...register('quantidade', { min: { value: 1, message: 'Mínimo 1' } })}
+                  />
+                  <InputError message={errors.quantidade?.message} />
+                </div>
 
-            <div className="sm:col-span-2">
-              <label className="label" htmlFor="obsMaterial">
-                Observação do Material
-              </label>
-              <input
-                id="obsMaterial"
-                type="text"
-                className="input"
-                placeholder="Detalhes sobre o material"
-                maxLength={500}
-                {...register('obsMaterial')}
-              />
-            </div>
+                <div className="sm:col-span-2">
+                  <label className="label" htmlFor="obsMaterial">
+                    Observação do Material
+                  </label>
+                  <input
+                    id="obsMaterial"
+                    type="text"
+                    className="input"
+                    placeholder="Detalhes sobre o material"
+                    maxLength={500}
+                    {...register('obsMaterial')}
+                  />
+                </div>
+              </>
+            )}
 
             <div className="sm:col-span-2">
               <label className="label" htmlFor="obsGeral">
@@ -386,8 +467,8 @@ export default function NovaEntrada() {
           </div>
         </div>
 
-        {/* Ajudante */}
-        <div className="card p-5 space-y-4">
+        {/* Ajudante (apenas transportes) */}
+        {!isPedestre && <div className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-800">Ajudante</h2>
             <button
@@ -467,7 +548,7 @@ export default function NovaEntrada() {
               </div>
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Submit */}
         <div className="flex items-center justify-end gap-3 pb-4">

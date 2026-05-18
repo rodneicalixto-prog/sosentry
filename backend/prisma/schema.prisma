@@ -93,6 +93,9 @@ model Registro {
   lacre             String?
   obsOcorrencia     String?        @map("obs_ocorrencia")
   horaSaida         DateTime?      @map("hora_saida")
+  setorDestino      String?        @map("setor_destino")
+  falarCom          String?        @map("falar_com")
+  autorizadoPor     String?        @map("autorizado_por")
   fotoUrl           String?        @map("foto_url")
   fotoThumbUrl      String?        @map("foto_thumb_url")
   status            StatusRegistro @default(na_fila)

@@ -28,6 +28,13 @@ function validarTelefone(tel) {
 exports.criar = async (req, res, next) => {
   try {
     const d = req.body;
+
+    if (!d.portariaId) return res.status(400).json({ error: 'Portaria obrigatória' });
+    const portaria = await prisma.portaria.findUnique({ where: { id: d.portariaId } });
+    if (!portaria) return res.status(404).json({ error: 'Portaria não encontrada' });
+
+    const isPedestre = portaria.tipo === 'pedestres';
+
     const nome     = d.nomeMotorista
     const cpf      = d.cpfMotorista
     const telefone = d.telefoneMotorista || null
@@ -36,36 +43,31 @@ exports.criar = async (req, res, next) => {
     const ajTel    = d.telefoneAjudante  || null
     const ajRg     = d.rgAjudante        || null
 
-    const camposObrigatorios = {
-      'Portaria': d.portariaId,
-      'Nome do motorista': nome,
-      'CPF do motorista': cpf,
-      'Placa': d.placa,
-      'Tipo de veículo': d.tipoVeiculo,
-      'Tipo de operação': d.tipoOperacao,
-    }
-    const ausentes = Object.entries(camposObrigatorios).filter(([, v]) => !v).map(([k]) => k)
-    if (ausentes.length) return res.status(400).json({ error: `Campos obrigatórios ausentes: ${ausentes.join(', ')}` })
+    // Validações comuns
+    if (!nome)   return res.status(400).json({ error: isPedestre ? 'Nome do visitante obrigatório' : 'Nome do motorista obrigatório' })
+    if (!cpf)    return res.status(400).json({ error: 'CPF obrigatório' })
+    if (!d.tipoOperacao) return res.status(400).json({ error: 'Tipo de operação obrigatório' })
     if (nome.length > 150) return res.status(400).json({ error: 'Nome muito longo' })
+    if (!validarCPF(cpf)) return res.status(400).json({ error: 'CPF inválido' })
+    if (telefone && !validarTelefone(telefone)) return res.status(400).json({ error: 'Telefone inválido (10–15 dígitos)' })
     if (d.empresa?.length > 150) return res.status(400).json({ error: 'Empresa muito longa' })
     if (d.notaFiscal?.length > 50) return res.status(400).json({ error: 'Nota fiscal muito longa (máx 50 chars)' })
-    if (d.tipoMaterial?.length > 100) return res.status(400).json({ error: 'Tipo de material muito longo (máx 100 chars)' })
     if (d.obsMaterial?.length > 500) return res.status(400).json({ error: 'Observação de material muito longa (máx 500 chars)' })
     if (d.obsGeral?.length > 2000) return res.status(400).json({ error: 'Observação geral muito longa (máx 2000 chars)' })
-    if (!validarCPF(cpf)) return res.status(400).json({ error: 'CPF inválido' })
     if (d.temAjudante && !ajNome) return res.status(400).json({ error: 'Nome do ajudante obrigatório' })
     if (ajCpf && !validarCPF(ajCpf)) return res.status(400).json({ error: 'CPF do ajudante inválido' })
-    if (telefone && !validarTelefone(telefone)) return res.status(400).json({ error: 'Telefone do motorista inválido (10–15 dígitos)' })
     if (ajTel && !validarTelefone(ajTel)) return res.status(400).json({ error: 'Telefone do ajudante inválido (10–15 dígitos)' })
 
-    const portaria = await prisma.portaria.findUnique({ where: { id: d.portariaId } });
-    if (!portaria) return res.status(404).json({ error: 'Portaria não encontrada' });
-
-    // Valida e normaliza placa (padrão ABC-1234 ou Mercosul ABC1D23)
-    const placaNorm = d.placa.toUpperCase().replace(/[^A-Z0-9]/g, '')
-    if (!/^[A-Z]{3}\d{4}$/.test(placaNorm) && !/^[A-Z]{3}\d[A-Z]\d{2}$/.test(placaNorm))
-      return res.status(400).json({ error: 'Placa inválida (use ABC-1234 ou ABC1D23)' })
-    const placa = `${placaNorm.slice(0, 3)}-${placaNorm.slice(3)}`
+    let placa = null;
+    if (!isPedestre) {
+      // Validações exclusivas de veículo
+      if (!d.placa)      return res.status(400).json({ error: 'Placa obrigatória' })
+      if (!d.tipoVeiculo) return res.status(400).json({ error: 'Tipo de veículo obrigatório' })
+      const placaNorm = d.placa.toUpperCase().replace(/[^A-Z0-9]/g, '')
+      if (!/^[A-Z]{3}\d{4}$/.test(placaNorm) && !/^[A-Z]{3}\d[A-Z]\d{2}$/.test(placaNorm))
+        return res.status(400).json({ error: 'Placa inválida (use ABC-1234 ou ABC1D23)' })
+      placa = `${placaNorm.slice(0, 3)}-${placaNorm.slice(3)}`
+    }
 
     // dataEntrada: usa o valor enviado (forçando UTC) ou o momento atual
     const dtEntrada = d.dataEntrada
@@ -74,13 +76,15 @@ exports.criar = async (req, res, next) => {
     const dados = {
       portariaId: d.portariaId, operadorEntradaId: req.user.id,
       nomeMotorista: nome, cpfMotorista: cpf, telefoneMotorista: telefone||null,
-      placa,
-      tipoVeiculo: d.tipoVeiculo, empresa: d.empresa||null, notaFiscal: d.notaFiscal||null,
+      placa: placa || 'PEDESTRE',
+      tipoVeiculo: d.tipoVeiculo || (isPedestre ? 'Pedestre' : null),
+      empresa: d.empresa||null, notaFiscal: d.notaFiscal||null,
       tipoOperacao: d.tipoOperacao, tipoMaterial: d.tipoMaterial||null,
       tipoEmbalagem: d.tipoEmbalagem||null, quantidade: d.quantidade ? Number(d.quantidade) : null,
       obsMaterial: d.obsMaterial||null, obsGeral: d.obsGeral||null,
       temAjudante: !!d.temAjudante,
       ajudanteNome: ajNome, ajudanteCpf: ajCpf, ajudanteTelefone: ajTel, ajudanteRg: ajRg,
+      setorDestino: d.setorDestino||null, falarCom: d.falarCom||null, autorizadoPor: d.autorizadoPor||null,
       dataEntrada: dtEntrada
     }
 
