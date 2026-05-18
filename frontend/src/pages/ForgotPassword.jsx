@@ -41,7 +41,7 @@ export default function ForgotPassword() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <h2 className="text-lg font-semibold text-gray-800 mb-2">Esqueci minha senha</h2>
           <p className="text-sm text-gray-500 mb-6">
-            Informe seu login. Se houver um telefone cadastrado, enviaremos um link de redefinição pelo WhatsApp.
+            Informe seu login. Se houver um telefone cadastrado, enviaremos um link de redefinição pelo WhatsApp. O link é válido por 1 hora.
           </p>
 
           {status === 'ok' && (

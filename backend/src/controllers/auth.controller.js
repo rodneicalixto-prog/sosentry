@@ -80,7 +80,7 @@ exports.forgotPassword = async (req, res, next) => {
 
     // Token de 256 bits, expira em 15 minutos
     const token = crypto.randomBytes(32).toString('hex');
-    const expiry = new Date(Date.now() + 15 * 60 * 1000);
+    const expiry = new Date(Date.now() + 60 * 60 * 1000);
 
     await prisma.user.update({
       where: { id: user.id },
@@ -101,7 +101,7 @@ exports.forgotPassword = async (req, res, next) => {
       `Olá, *${user.nome}*!\n\n` +
       `Recebemos uma solicitação de redefinição de senha para o login *${user.login}*.\n\n` +
       `👉 Clique no link abaixo para criar uma nova senha:\n${link}\n\n` +
-      `⏱ Este link expira em *15 minutos*.\n\n` +
+      `⏱ Este link expira em *1 hora*.\n\n` +
       `Se você não solicitou isso, ignore esta mensagem e sua senha permanece a mesma.`;
 
     // Aviso ao admin
@@ -114,7 +114,8 @@ exports.forgotPassword = async (req, res, next) => {
       `🕐 Horário: ${agora}\n\n` +
       `Se esta ação for suspeita, bloqueie o usuário em Administração → Usuários.`;
 
-    await Promise.allSettled([
+    // Fire-and-forget — não bloqueia a resposta ao usuário
+    Promise.allSettled([
       evo.send(user.telefone, msgUsuario).catch(e => console.warn('[reset] WhatsApp usuário:', e.message)),
       resp ? evo.send(resp, msgAdmin).catch(e => console.warn('[reset] WhatsApp admin:', e.message)) : Promise.resolve(),
     ]);

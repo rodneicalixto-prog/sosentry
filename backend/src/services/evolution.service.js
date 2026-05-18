@@ -8,6 +8,7 @@ async function send(number, text) {
   const dest = n.startsWith('55') ? n : '55'+n;
   const r = await fetch(`${BASE}/message/sendText/${INST}`, {
     method:'POST',
+    signal: AbortSignal.timeout(8000),
     headers:{ apikey: KEY, 'Content-Type':'application/json' },
     body: JSON.stringify({ number: dest, text })
   });
