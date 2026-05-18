@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { ShieldCheck, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -122,6 +122,12 @@ export default function Login() {
               )}
             </button>
           </form>
+
+          <div className="mt-4 text-center">
+            <Link to="/recuperar-senha" className="text-sm text-primary-700 hover:text-primary-800 font-medium">
+              Esqueci minha senha
+            </Link>
+          </div>
         </div>
 
         <p className="text-center text-white/40 text-xs mt-6">

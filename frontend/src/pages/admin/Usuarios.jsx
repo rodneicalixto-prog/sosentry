@@ -221,11 +221,14 @@ export default function Usuarios() {
               </div>
 
               <div>
-                <label className="label">Telefone</label>
+                <label className="label">
+                  Telefone
+                  <span className="ml-1 text-xs text-gray-400 font-normal">(necessário para recuperar senha)</span>
+                </label>
                 <input
                   type="tel"
                   className="input"
-                  placeholder="(00) 00000-0000"
+                  placeholder="5511999999999"
                   {...register('telefone')}
                 />
               </div>
