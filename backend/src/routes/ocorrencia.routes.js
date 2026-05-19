@@ -1,9 +1,9 @@
 const express = require('express');
 const r = express.Router();
-const { authMiddleware, requireRole } = require('../middleware/auth.middleware');
+const { authenticate, requireRole } = require('../middleware/auth.middleware');
 const c = require('../controllers/ocorrencia.controller');
 
-r.use(authMiddleware);
+r.use(authenticate);
 r.get('/',      requireRole('operador'),   c.listar);
 r.get('/:id',   requireRole('operador'),   c.buscar);
 r.post('/',     requireRole('operador'),   c.criar);
