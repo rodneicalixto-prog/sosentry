@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { PlusCircle, Pencil, X, CheckCircle, AlertCircle, UserX, UserCheck } from 'lucide-react'
+import { PlusCircle, Pencil, X, CheckCircle, AlertCircle, UserX, UserCheck, MessageCircle } from 'lucide-react'
 import api from '../../api/client'
 import { useAuth } from '../../contexts/AuthContext'
 
 const ROLE_LEVELS = { operador: 1, supervisor: 2, admin: 3, superadmin: 4 }
 const ROLE_LABELS = { operador: 'Operador', supervisor: 'Supervisor', admin: 'Admin', superadmin: 'Super Admin' }
-const TURNOS = ['Manhã', 'Tarde', 'Noite', 'Integral', '']
+const TURNOS = ['Manhã', 'Tarde', 'Noite', 'Integral']
 
 function Modal({ title, onClose, children }) {
   return (
@@ -29,6 +29,21 @@ function InputError({ message }) {
   return <p className="mt-1 text-xs text-red-600">{message}</p>
 }
 
+function Toggle({ checked, onChange, disabled }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      disabled={disabled}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-700 focus:ring-offset-1 disabled:opacity-50 ${checked ? 'bg-green-500' : 'bg-gray-300'}`}
+      role="switch"
+      aria-checked={checked}
+    >
+      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+    </button>
+  )
+}
+
 export default function Usuarios() {
   const { user: currentUser } = useAuth()
   const [users, setUsers] = useState([])
@@ -38,17 +53,18 @@ export default function Usuarios() {
   const [showModal, setShowModal] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
   const [modalError, setModalError] = useState('')
+  const [recebeWhatsapp, setRecebeWhatsapp] = useState(false)
 
   const maxRole = currentUser?.role || 'operador'
   const maxLevel = ROLE_LEVELS[maxRole] || 1
+  const isSuperadmin = maxRole === 'superadmin'
 
-  const availableRoles = Object.entries(ROLE_LEVELS)
-    .filter(([, level]) => level < maxLevel)
-    .map(([role]) => role)
+  const availableRoles = Object.entries(ROLE_LABELS)
+    .filter(([role]) => isSuperadmin || ROLE_LEVELS[role] < maxLevel)
+    .map(([role, label]) => ({ role, label }))
 
   const fetchUsers = async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true); setError('')
     try {
       const { data } = await api.get('/api/users')
       setUsers(data)
@@ -59,53 +75,27 @@ export default function Usuarios() {
     }
   }
 
-  useEffect(() => {
-    fetchUsers()
-  }, [])
+  useEffect(() => { fetchUsers() }, [])
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm()
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm()
 
   const openCreate = () => {
-    setEditingUser(null)
-    setModalError('')
-    reset({
-      nome: '',
-      login: '',
-      email: '',
-      senha: '',
-      role: '',
-      turno: '',
-      telefone: '',
-    })
+    setEditingUser(null); setModalError(''); setRecebeWhatsapp(false)
+    reset({ nome: '', login: '', email: '', senha: '', role: '', turno: '', setor: '', telefone: '' })
     setShowModal(true)
   }
 
   const openEdit = (u) => {
-    setEditingUser(u)
-    setModalError('')
-    reset({
-      nome: u.nome || '',
-      login: u.login || '',
-      email: u.email || '',
-      senha: '',
-      role: u.role || '',
-      turno: u.turno || '',
-      telefone: u.telefone || '',
-    })
+    setEditingUser(u); setModalError(''); setRecebeWhatsapp(!!u.recebeWhatsapp)
+    reset({ nome: u.nome||'', login: u.login||'', email: u.email||'', senha: '', role: u.role||'', turno: u.turno||'', setor: u.setor||'', telefone: u.telefone||'' })
     setShowModal(true)
   }
 
   const onSubmit = async (formData) => {
     setModalError('')
     try {
-      const payload = { ...formData }
+      const payload = { ...formData, recebeWhatsapp }
       if (!payload.senha) delete payload.senha
-
       if (editingUser) {
         await api.patch(`/api/users/${editingUser.id}`, payload)
         setSuccess('Usuário atualizado com sucesso.')
@@ -113,15 +103,10 @@ export default function Usuarios() {
         await api.post('/api/users', payload)
         setSuccess('Usuário criado com sucesso.')
       }
-      setShowModal(false)
-      fetchUsers()
+      setShowModal(false); fetchUsers()
       setTimeout(() => setSuccess(''), 4000)
     } catch (err) {
-      setModalError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          'Erro ao salvar usuário.',
-      )
+      setModalError(err?.response?.data?.error || 'Erro ao salvar usuário.')
     }
   }
 
@@ -130,7 +115,7 @@ export default function Usuarios() {
     if (!window.confirm(`Deseja ${acao} o usuário "${u.nome || u.login}"?`)) return
     try {
       await api.patch(`/api/users/${u.id}`, { ativo: !u.ativo })
-      setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, ativo: !u.ativo } : x)))
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, ativo: !u.ativo } : x))
     } catch {
       setError('Erro ao alterar status do usuário.')
     }
@@ -139,143 +124,127 @@ export default function Usuarios() {
   return (
     <div className="space-y-5">
       {showModal && (
-        <Modal
-          title={editingUser ? 'Editar Usuário' : 'Novo Usuário'}
-          onClose={() => setShowModal(false)}
-        >
+        <Modal title={editingUser ? 'Editar Usuário' : 'Novo Usuário'} onClose={() => setShowModal(false)}>
           {modalError && (
             <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 mb-4 text-sm">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              {modalError}
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />{modalError}
             </div>
           )}
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <label className="label">Nome <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  className={`input ${errors.nome ? 'border-red-400' : ''}`}
-                  {...register('nome', { required: 'Informe o nome' })}
-                />
+                <input type="text" className={`input ${errors.nome ? 'border-red-400' : ''}`}
+                  {...register('nome', { required: 'Informe o nome' })} />
                 <InputError message={errors.nome?.message} />
               </div>
 
               <div>
                 <label className="label">Login <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  className={`input ${errors.login ? 'border-red-400' : ''}`}
-                  {...register('login', { required: 'Informe o login' })}
-                />
+                <input type="text" className={`input ${errors.login ? 'border-red-400' : ''}`}
+                  {...register('login', { required: 'Informe o login' })} />
                 <InputError message={errors.login?.message} />
               </div>
 
               <div>
                 <label className="label">E-mail</label>
-                <input
-                  type="email"
-                  className="input"
-                  {...register('email')}
-                />
+                <input type="email" className="input" {...register('email')} />
               </div>
 
               <div>
                 <label className="label">
-                  Senha {!editingUser && <span className="text-red-500">*</span>}
-                  {editingUser && <span className="text-gray-400 font-normal">(deixe em branco para manter)</span>}
+                  Senha{!editingUser && <span className="text-red-500 ml-0.5">*</span>}
+                  {editingUser && <span className="text-gray-400 font-normal text-xs ml-1">(em branco = manter)</span>}
                 </label>
-                <input
-                  type="password"
-                  className={`input ${errors.senha ? 'border-red-400' : ''}`}
+                <input type="password" className={`input ${errors.senha ? 'border-red-400' : ''}`}
                   {...register('senha', {
                     required: !editingUser ? 'Informe a senha' : false,
                     minLength: { value: 6, message: 'Mínimo 6 caracteres' },
-                  })}
-                />
+                  })} />
                 <InputError message={errors.senha?.message} />
               </div>
 
               <div>
                 <label className="label">Perfil <span className="text-red-500">*</span></label>
-                <select
-                  className={`input ${errors.role ? 'border-red-400' : ''}`}
-                  {...register('role', { required: 'Selecione o perfil' })}
-                >
+                <select className={`input ${errors.role ? 'border-red-400' : ''}`}
+                  {...register('role', { required: 'Selecione o perfil' })}>
                   <option value="">Selecione…</option>
-                  {availableRoles.map((r) => (
-                    <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                  {availableRoles.map(({ role, label }) => (
+                    <option key={role} value={role}>{label}</option>
                   ))}
                 </select>
                 <InputError message={errors.role?.message} />
               </div>
 
               <div>
+                <label className="label">Setor / Departamento</label>
+                <input type="text" className="input" placeholder="ex: Logística, RH, TI…"
+                  maxLength={100} {...register('setor')} />
+              </div>
+
+              <div>
                 <label className="label">Turno</label>
                 <select className="input" {...register('turno')}>
                   <option value="">Selecione…</option>
-                  {TURNOS.filter(Boolean).map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
+                  {TURNOS.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
 
               <div>
                 <label className="label">
-                  Telefone
-                  <span className="ml-1 text-xs text-gray-400 font-normal">(necessário para recuperar senha)</span>
+                  Telefone / WhatsApp
+                  <span className="ml-1 text-xs text-gray-400 font-normal">(com DDI+DDD)</span>
                 </label>
-                <input
-                  type="tel"
-                  className="input"
-                  placeholder="5511999999999"
-                  {...register('telefone')}
-                />
+                <input type="tel" className="input" placeholder="5511999999999"
+                  {...register('telefone')} />
+              </div>
+
+              <div className="sm:col-span-2">
+                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                      <MessageCircle className="w-4 h-4 text-green-600" />
+                      Recebe notificações WhatsApp
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Este usuário será notificado em todas as entradas e saídas
+                    </p>
+                  </div>
+                  <Toggle checked={recebeWhatsapp} onChange={setRecebeWhatsapp} />
+                </div>
               </div>
             </div>
 
             <div className="flex gap-3 justify-end pt-2">
-              <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">
-                Cancelar
-              </button>
+              <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button>
               <button type="submit" disabled={isSubmitting} className="btn-primary">
                 {isSubmitting ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Salvando…
-                  </>
-                ) : (
-                  'Salvar'
-                )}
+                  <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Salvando…</>
+                ) : 'Salvar'}
               </button>
             </div>
           </form>
         </Modal>
       )}
 
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
           <p className="text-sm text-gray-500 mt-0.5">Gerenciamento de usuários do sistema</p>
         </div>
         <button onClick={openCreate} className="btn-accent">
-          <PlusCircle className="w-4 h-4" />
-          Novo Usuário
+          <PlusCircle className="w-4 h-4" />Novo Usuário
         </button>
       </div>
 
       {success && (
         <div className="flex items-start gap-2 bg-green-50 border border-green-200 text-green-800 rounded-lg px-4 py-3 text-sm">
-          <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-          {success}
+          <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />{success}
         </div>
       )}
-
       {error && (
         <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-          {error}
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />{error}
         </div>
       )}
 
@@ -293,61 +262,48 @@ export default function Usuarios() {
                 <tr>
                   <th className="table-th">Nome</th>
                   <th className="table-th hidden sm:table-cell">Login</th>
-                  <th className="table-th hidden md:table-cell">E-mail</th>
+                  <th className="table-th hidden md:table-cell">Setor</th>
                   <th className="table-th">Perfil</th>
                   <th className="table-th hidden lg:table-cell">Turno</th>
+                  <th className="table-th text-center">WhatsApp</th>
                   <th className="table-th">Status</th>
                   <th className="table-th text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {users.map((u) => (
+                {users.map(u => (
                   <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                     <td className="table-td font-medium">{u.nome || u.login}</td>
                     <td className="table-td hidden sm:table-cell text-gray-500">{u.login}</td>
-                    <td className="table-td hidden md:table-cell text-gray-500">{u.email || '—'}</td>
+                    <td className="table-td hidden md:table-cell text-gray-500">{u.setor || '—'}</td>
                     <td className="table-td">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700">
                         {ROLE_LABELS[u.role] || u.role}
                       </span>
                     </td>
                     <td className="table-td hidden lg:table-cell text-gray-500">{u.turno || '—'}</td>
+                    <td className="table-td text-center">
+                      {u.recebeWhatsapp
+                        ? <MessageCircle className="w-4 h-4 text-green-500 mx-auto" title="Recebe notificações WhatsApp" />
+                        : <span className="text-gray-300 text-xs">—</span>
+                      }
+                    </td>
                     <td className="table-td">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          u.ativo !== false
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-500'
-                        }`}
-                      >
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${u.ativo !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {u.ativo !== false ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
                     <td className="table-td">
                       <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => openEdit(u)}
-                          className="btn-secondary btn-sm"
-                          title="Editar"
-                          disabled={ROLE_LEVELS[u.role] >= maxLevel}
-                        >
+                        <button onClick={() => openEdit(u)} className="btn-secondary btn-sm" title="Editar"
+                          disabled={!isSuperadmin && ROLE_LEVELS[u.role] >= maxLevel}>
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => toggleAtivo(u)}
-                          className={`btn-sm btn ${
-                            u.ativo !== false
-                              ? 'bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-200'
-                              : 'bg-green-50 hover:bg-green-100 text-green-600 border border-green-200'
-                          }`}
+                        <button onClick={() => toggleAtivo(u)}
+                          className={`btn-sm btn ${u.ativo !== false ? 'bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-200' : 'bg-green-50 hover:bg-green-100 text-green-600 border border-green-200'}`}
                           title={u.ativo !== false ? 'Desativar' : 'Ativar'}
-                          disabled={ROLE_LEVELS[u.role] >= maxLevel}
-                        >
-                          {u.ativo !== false ? (
-                            <UserX className="w-3.5 h-3.5" />
-                          ) : (
-                            <UserCheck className="w-3.5 h-3.5" />
-                          )}
+                          disabled={!isSuperadmin && ROLE_LEVELS[u.role] >= maxLevel}>
+                          {u.ativo !== false ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </td>

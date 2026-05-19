@@ -6,6 +6,7 @@ const sseSvc = require('../services/sse.service');
 
 async function dispararSetores(evento, reg) {
   try {
+    // 1. Regras de setor configuradas
     const setores = await prisma.notificacaoSetor.findMany({ where: { ativo: true } });
     for (const s of setores) {
       if (!s.eventos.includes(evento)) continue;
@@ -22,6 +23,16 @@ async function dispararSetores(evento, reg) {
         evo.enviarSetor(s.telefone, s.nome, evento, reg)
           .catch(e => console.error(`[evo] setor ${s.nome}: ${e.message}`));
       }
+    }
+
+    // 2. Usuários com recebeWhatsapp=true e telefone cadastrado
+    const usuarios = await prisma.user.findMany({
+      where: { ativo: true, recebeWhatsapp: true, telefone: { not: null } },
+      select: { nome: true, telefone: true },
+    });
+    for (const u of usuarios) {
+      evo.enviarSetor(u.telefone, u.nome, evento, reg)
+        .catch(e => console.error(`[evo] usuário ${u.nome}: ${e.message}`));
     }
   } catch (e) {
     console.error('[setores] erro ao disparar notificações:', e.message);

@@ -3,11 +3,17 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const HIER = ['operador','supervisor','admin','superadmin'];
 
+const SELECT_FIELDS = {
+  id: true, nome: true, login: true, email: true,
+  role: true, turno: true, setor: true, recebeWhatsapp: true,
+  telefone: true, ativo: true, createdAt: true,
+};
+
 exports.listar = async (req, res, next) => {
   try {
     const where = req.user.role === 'admin' ? { role: { not: 'superadmin' } } : {};
     const users = await prisma.user.findMany({ where,
-      select: { id:true,nome:true,login:true,email:true,role:true,turno:true,telefone:true,ativo:true,createdAt:true },
+      select: SELECT_FIELDS,
       orderBy: { nome: 'asc' } });
     res.json(users);
   } catch(e){ next(e); }
@@ -15,9 +21,13 @@ exports.listar = async (req, res, next) => {
 
 exports.criar = async (req, res, next) => {
   try {
-    const { nome, login, email, senha, role='operador', turno, telefone } = req.body;
-    if (HIER.indexOf(role) >= HIER.indexOf(req.user.role))
+    const { nome, login, email, senha, role='operador', turno, setor, telefone, recebeWhatsapp } = req.body;
+
+    if (role === 'superadmin' && req.user.role !== 'superadmin')
+      return res.status(403).json({ error: 'Apenas superadmins podem criar outros superadmins' });
+    if (role !== 'superadmin' && HIER.indexOf(role) >= HIER.indexOf(req.user.role))
       return res.status(403).json({ error: 'Não é possível criar perfil igual ou superior ao seu' });
+
     const existe = await prisma.user.findUnique({ where: { login: login.toLowerCase() } });
     if (existe) return res.status(409).json({ error: 'Login já em uso' });
     if (email) {
@@ -27,8 +37,10 @@ exports.criar = async (req, res, next) => {
     const user = await prisma.user.create({ data: {
       nome, login: login.toLowerCase().trim(), email: email||null,
       passwordHash: await bcrypt.hash(senha, 12),
-      role, turno: turno||null, telefone: telefone||null, createdBy: req.user.id
-    }, select: { id:true,nome:true,login:true,role:true,turno:true,ativo:true } });
+      role, turno: turno||null, setor: setor||null,
+      recebeWhatsapp: !!recebeWhatsapp,
+      telefone: telefone||null, createdBy: req.user.id
+    }, select: SELECT_FIELDS });
     res.status(201).json(user);
   } catch(e){ next(e); }
 };
@@ -38,25 +50,36 @@ exports.atualizar = async (req, res, next) => {
     const { id } = req.params;
     const alvo = await prisma.user.findUnique({ where: { id } });
     if (!alvo) return res.status(404).json({ error: 'Usuário não encontrado' });
-    if (HIER.indexOf(alvo.role) >= HIER.indexOf(req.user.role) && alvo.id !== req.user.id)
+    if (alvo.role === 'superadmin' && req.user.role !== 'superadmin' && alvo.id !== req.user.id)
       return res.status(403).json({ error: 'Sem permissão' });
-    // Bloqueia edição de usuário desativado (exceto para reativar via campo ativo)
+    if (alvo.role !== 'superadmin' && HIER.indexOf(alvo.role) >= HIER.indexOf(req.user.role) && alvo.id !== req.user.id)
+      return res.status(403).json({ error: 'Sem permissão' });
     if (!alvo.ativo && alvo.id !== req.user.id && req.body.ativo !== true)
       return res.status(400).json({ error: 'Usuário está desativado. Reative-o primeiro.' });
-    const { nome, email, role, turno, telefone, ativo, senha } = req.body;
+
+    const { nome, email, role, turno, setor, telefone, recebeWhatsapp, ativo, senha } = req.body;
     const data = {};
-    if (nome)     data.nome     = nome;
-    if (email)    data.email    = email;
-    if (turno)    data.turno    = turno;
-    if (telefone) data.telefone = telefone;
-    if (ativo !== undefined) data.ativo = ativo;
-    if (role && HIER.indexOf(role) < HIER.indexOf(req.user.role)) data.role = role;
-    if (senha)    data.passwordHash = await bcrypt.hash(senha, 12);
-    const updated = await prisma.user.update({ where:{ id }, data,
-      select:{ id:true,nome:true,login:true,role:true,turno:true,ativo:true } });
+    if (nome !== undefined)             data.nome             = nome;
+    if (email !== undefined)            data.email            = email;
+    if (turno !== undefined)            data.turno            = turno || null;
+    if (setor !== undefined)            data.setor            = setor || null;
+    if (telefone !== undefined)         data.telefone         = telefone || null;
+    if (recebeWhatsapp !== undefined)   data.recebeWhatsapp   = !!recebeWhatsapp;
+    if (ativo !== undefined)            data.ativo            = ativo;
+    if (role) {
+      if (role === 'superadmin' && req.user.role !== 'superadmin')
+        return res.status(403).json({ error: 'Apenas superadmins podem promover para superadmin' });
+      if (role !== 'superadmin' && HIER.indexOf(role) < HIER.indexOf(req.user.role))
+        data.role = role;
+      else if (role === 'superadmin')
+        data.role = role;
+    }
+    if (senha) data.passwordHash = await bcrypt.hash(senha, 12);
+
+    const updated = await prisma.user.update({ where:{ id }, data, select: SELECT_FIELDS });
     res.json(updated);
-  } catch(e){
-    if (e.code === 'P2002') return res.status(409).json({ error: 'Login ou e-mail já em uso' })
+  } catch(e) {
+    if (e.code === 'P2002') return res.status(409).json({ error: 'Login ou e-mail já em uso' });
     next(e);
   }
 };
