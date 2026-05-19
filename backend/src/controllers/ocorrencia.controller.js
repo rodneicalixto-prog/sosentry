@@ -178,3 +178,67 @@ exports.atualizar = async (req, res, next) => {
     res.json(updated);
   } catch(e) { next(e); }
 };
+
+exports.exportar = async (req, res, next) => {
+  try {
+    const { status, categoria, busca, dataInicio, dataFim } = req.query;
+    const where = {};
+    if (status)   where.status   = status;
+    if (categoria) where.categoria = categoria;
+    if (busca) {
+      if (typeof busca !== 'string' || busca.length > 100)
+        return res.status(400).json({ error: 'Busca inválida' });
+      const term = busca.trim();
+      where.OR = [
+        { protocolo: { contains: term, mode: 'insensitive' } },
+        { descricao: { contains: term, mode: 'insensitive' } },
+        { local:     { contains: term, mode: 'insensitive' } },
+        { tipo:      { contains: term, mode: 'insensitive' } },
+      ];
+    }
+    if (dataInicio || dataFim) {
+      const inicio = dataInicio ? new Date(dataInicio + 'T00:00:00Z') : null;
+      const fim    = dataFim    ? new Date(dataFim    + 'T23:59:59Z') : null;
+      if ((inicio && isNaN(inicio)) || (fim && isNaN(fim)))
+        return res.status(400).json({ error: 'Data inválida (use YYYY-MM-DD)' });
+      where.dataHora = {};
+      if (inicio) where.dataHora.gte = inicio;
+      if (fim)    where.dataHora.lte = fim;
+    }
+
+    const ocorrencias = await prisma.ocorrencia.findMany({
+      where,
+      take: 5000,
+      orderBy: { dataHora: 'desc' },
+      include: { registradoPor: { select: { nome: true } } },
+    });
+
+    const fmt = (iso) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const p = n => String(n).padStart(2, '0');
+      return `${p(d.getUTCDate())}/${p(d.getUTCMonth()+1)}/${d.getUTCFullYear()} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+    };
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+    const header = ['Protocolo','Status','Categoria','Tipo','Local','Data/Hora','Registrado por','Descrição','Providências','Danos Materiais','Estimativa Danos','Envolvidos','Testemunhas','Acionamentos','Anexos'];
+    const rows = ocorrencias.map(o => [
+      o.protocolo, o.status, o.categoria, o.tipo, o.local, fmt(o.dataHora),
+      o.registradoPor?.nome ?? '',
+      o.descricao,
+      o.providencias ?? '',
+      o.danosMateriais ?? '',
+      o.estimativaDanos ?? '',
+      Array.isArray(o.envolvidos)  ? o.envolvidos.length  : 0,
+      Array.isArray(o.testemunhas) ? o.testemunhas.length : 0,
+      Array.isArray(o.acionamentos)? o.acionamentos.length: 0,
+      Array.isArray(o.anexos)      ? o.anexos.length      : 0,
+    ].map(esc).join(','));
+
+    const csv = '﻿' + [header.join(','), ...rows].join('\r\n');
+    const filename = `ocorrencias_${new Date().toISOString().slice(0,10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch(e) { next(e); }
+};
