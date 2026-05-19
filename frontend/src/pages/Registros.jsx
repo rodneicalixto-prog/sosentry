@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, PlusCircle, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import api from '../api/client'
 import StatusBadge from '../components/StatusBadge'
@@ -18,6 +18,7 @@ function formatDateTime(iso) {
 
 export default function Registros() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [registros, setRegistros] = useState([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
@@ -25,10 +26,10 @@ export default function Registros() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const [busca, setBusca] = useState('')
-  const [status, setStatus] = useState('')
-  const [dataInicio, setDataInicio] = useState('')
-  const [dataFim, setDataFim] = useState('')
+  const [busca, setBusca] = useState(() => searchParams.get('busca') || '')
+  const [status, setStatus] = useState(() => searchParams.get('status') || '')
+  const [dataInicio, setDataInicio] = useState(() => searchParams.get('dataInicio') || '')
+  const [dataFim, setDataFim] = useState(() => searchParams.get('dataFim') || '')
 
   const LIMIT = 15
 
