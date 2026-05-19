@@ -31,6 +31,8 @@ model User {
   passwordHash String    @map("password_hash")
   role         Role      @default(operador)
   turno        String?
+  setor        String?
+  recebeWhatsapp Boolean @default(false) @map("recebe_whatsapp")
   telefone          String?
   resetToken        String?   @unique @map("reset_token")
   resetTokenExpiry  DateTime? @map("reset_token_expiry")
