@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft, LogOut, LogIn, AlertCircle, CheckCircle, Tag, AlertTriangle, X } from 'lucide-react'
+import { ChevronLeft, LogOut, LogIn, AlertCircle, CheckCircle, AlertTriangle, X, ExternalLink } from 'lucide-react'
 import api from '../api/client'
 import StatusBadge from '../components/StatusBadge'
+import FotoUpload from '../components/FotoUpload'
 
 function formatDateTime(iso) {
   if (!iso) return '—'
@@ -21,18 +22,26 @@ function Detail({ label, value, span }) {
 }
 
 function SaidaModal({ registro, onSave, onCancel }) {
-  const [lacre, setLacre] = useState('')
+  const [lacreImageUrl, setLacreImageUrl] = useState(null)
+  const [fotoCarroceriaUrl, setFotoCarroceriaUrl] = useState(null)
   const [obsOcorrencia, setObsOcorrencia] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
 
   const inp = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const isEntrega = registro?.tipoOperacao?.toLowerCase() === 'entrega'
 
   async function submit(e) {
     e.preventDefault()
+    if (isEntrega && !fotoCarroceriaUrl) {
+      setErro('Foto da carroceria aberta é obrigatória para operações de Entrega.')
+      return
+    }
     setSalvando(true); setErro('')
     try {
-      const { data } = await api.patch(`/api/registros/${registro.protocolo}/saida`, { lacre, obsOcorrencia })
+      const { data } = await api.patch(`/api/registros/${registro.protocolo}/saida`, {
+        lacreImageUrl, fotoCarroceriaUrl, obsOcorrencia,
+      })
       onSave(data)
     } catch (err) {
       setErro(err?.response?.data?.error || 'Erro ao registrar saída.')
@@ -43,7 +52,7 @@ function SaidaModal({ registro, onSave, onCancel }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Registrar Saída</h3>
@@ -66,19 +75,22 @@ function SaidaModal({ registro, onSave, onCancel }) {
             <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">{erro}</div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              <Tag className="w-3.5 h-3.5 inline mr-1 text-gray-400" />
-              Nº do Lacre
-            </label>
-            <input
-              className={inp}
-              placeholder="Número do lacre (opcional)"
-              maxLength={50}
-              value={lacre}
-              onChange={e => setLacre(e.target.value)}
+          <FotoUpload
+            label="Foto do Lacre"
+            value={lacreImageUrl}
+            onChange={setLacreImageUrl}
+            disabled={salvando}
+          />
+
+          {isEntrega && (
+            <FotoUpload
+              label="Foto da Carroceria Aberta"
+              obrigatorio
+              value={fotoCarroceriaUrl}
+              onChange={setFotoCarroceriaUrl}
+              disabled={salvando}
             />
-          </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -245,7 +257,6 @@ export default function RegistroDetalhe() {
         <dl className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <Detail label="Placa" value={registro.placa} />
           <Detail label="Tipo"  value={registro.tipoVeiculo} />
-          {registro.lacre && <Detail label="Nº do Lacre" value={registro.lacre} />}
         </dl>
       </div>
 
@@ -264,14 +275,41 @@ export default function RegistroDetalhe() {
         </dl>
       </div>
 
-      {/* Saída — lacre e ocorrências (só exibe se tiver dados) */}
-      {(registro.lacre || registro.obsOcorrencia) && (
+      {/* Saída — fotos e ocorrências */}
+      {(registro.lacreImageUrl || registro.fotoCarroceriaUrl || registro.obsOcorrencia) && (
         <div className="card p-5 border-l-4 border-orange-400">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Dados da Saída</h2>
-          <dl className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {registro.lacre        && <Detail label="Nº do Lacre" value={registro.lacre} />}
-            {registro.obsOcorrencia && <Detail label="Observações / Ocorrências" value={registro.obsOcorrencia} span />}
-          </dl>
+          <div className="space-y-4">
+            {registro.lacreImageUrl && (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Foto do Lacre</p>
+                <a href={registro.lacreImageUrl} target="_blank" rel="noopener noreferrer">
+                  <img src={registro.lacreImageUrl} alt="Foto do lacre" className="max-h-48 rounded-lg border border-gray-200 object-contain bg-gray-50" />
+                </a>
+                <a href={registro.lacreImageUrl} target="_blank" rel="noopener noreferrer"
+                  className="mt-1 flex items-center gap-1 text-xs text-blue-600 underline">
+                  <ExternalLink className="w-3 h-3" /> Ver em tamanho completo
+                </a>
+              </div>
+            )}
+            {registro.fotoCarroceriaUrl && (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Foto da Carroceria Aberta</p>
+                <a href={registro.fotoCarroceriaUrl} target="_blank" rel="noopener noreferrer">
+                  <img src={registro.fotoCarroceriaUrl} alt="Foto da carroceria" className="max-h-48 rounded-lg border border-gray-200 object-contain bg-gray-50" />
+                </a>
+                <a href={registro.fotoCarroceriaUrl} target="_blank" rel="noopener noreferrer"
+                  className="mt-1 flex items-center gap-1 text-xs text-blue-600 underline">
+                  <ExternalLink className="w-3 h-3" /> Ver em tamanho completo
+                </a>
+              </div>
+            )}
+            {registro.obsOcorrencia && (
+              <dl>
+                <Detail label="Observações / Ocorrências" value={registro.obsOcorrencia} span />
+              </dl>
+            )}
+          </div>
         </div>
       )}
 

@@ -90,7 +90,8 @@ model Registro {
   ajudanteRg        String?        @map("ajudante_rg")
   dataEntrada       DateTime       @map("data_entrada")
   horaEntrada       DateTime?      @map("hora_entrada")
-  lacre             String?
+  lacreImageUrl     String?        @map("lacre_image_url")
+  fotoCarroceriaUrl String?        @map("foto_carroceria_url")
   obsOcorrencia     String?        @map("obs_ocorrencia")
   horaSaida         DateTime?      @map("hora_saida")
   setorDestino      String?        @map("setor_destino")
@@ -109,6 +110,7 @@ model Registro {
   @@index([status])
   @@map("registros")
 }
+
 model Webhook {
   id        String   @id @default(uuid())
   nome      String

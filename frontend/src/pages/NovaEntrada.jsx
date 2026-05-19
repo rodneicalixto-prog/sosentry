@@ -74,8 +74,10 @@ export default function NovaEntrada() {
   }, [])
 
   const portariaId = watch('portariaId')
+  const tipoOperacao = watch('tipoOperacao')
   const portariaSelecionada = portarias.find(p => p.id === portariaId)
   const isPedestre = portariaSelecionada?.tipo === 'pedestres'
+  const isColeta = tipoOperacao?.toLowerCase() === 'coleta'
 
   const handleCPFMotorista = (e) => {
     setValue('cpfMotorista', formatCPF(e.target.value), { shouldValidate: false })
@@ -343,16 +345,19 @@ export default function NovaEntrada() {
             {!isPedestre && (
               <div>
                 <label className="label" htmlFor="notaFiscal">
-                  Nota Fiscal
+                  Nota Fiscal{isColeta && <span className="text-red-500 ml-0.5">*</span>}
                 </label>
                 <input
                   id="notaFiscal"
                   type="text"
-                  className="input"
+                  className={`input ${errors.notaFiscal ? 'border-red-400' : ''}`}
                   placeholder="Número da NF"
                   maxLength={50}
-                  {...register('notaFiscal')}
+                  {...register('notaFiscal', {
+                    validate: v => !isColeta || !!v || 'Nota Fiscal obrigatória para Coleta',
+                  })}
                 />
+                <InputError message={errors.notaFiscal?.message} />
               </div>
             )}
 
