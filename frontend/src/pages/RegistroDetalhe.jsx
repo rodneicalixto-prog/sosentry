@@ -286,10 +286,13 @@ export default function RegistroDetalhe() {
                 <a href={registro.lacreImageUrl} target="_blank" rel="noopener noreferrer">
                   <img src={registro.lacreImageUrl} alt="Foto do lacre" className="max-h-48 rounded-lg border border-gray-200 object-contain bg-gray-50" />
                 </a>
-                <a href={registro.lacreImageUrl} target="_blank" rel="noopener noreferrer"
-                  className="mt-1 flex items-center gap-1 text-xs text-blue-600 underline">
-                  <ExternalLink className="w-3 h-3" /> Ver em tamanho completo
-                </a>
+                <div className="mt-2 flex items-start gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                  <ExternalLink className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                  <a href={registro.lacreImageUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-blue-600 underline break-all leading-relaxed">
+                    {registro.lacreImageUrl}
+                  </a>
+                </div>
               </div>
             )}
             {registro.fotoCarroceriaUrl && (
@@ -298,10 +301,13 @@ export default function RegistroDetalhe() {
                 <a href={registro.fotoCarroceriaUrl} target="_blank" rel="noopener noreferrer">
                   <img src={registro.fotoCarroceriaUrl} alt="Foto da carroceria" className="max-h-48 rounded-lg border border-gray-200 object-contain bg-gray-50" />
                 </a>
-                <a href={registro.fotoCarroceriaUrl} target="_blank" rel="noopener noreferrer"
-                  className="mt-1 flex items-center gap-1 text-xs text-blue-600 underline">
-                  <ExternalLink className="w-3 h-3" /> Ver em tamanho completo
-                </a>
+                <div className="mt-2 flex items-start gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                  <ExternalLink className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                  <a href={registro.fotoCarroceriaUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-blue-600 underline break-all leading-relaxed">
+                    {registro.fotoCarroceriaUrl}
+                  </a>
+                </div>
               </div>
             )}
             {registro.obsOcorrencia && (
