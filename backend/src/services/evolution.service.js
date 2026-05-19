@@ -79,4 +79,32 @@ async function enviarSetor(numero, nomeSetor, evento, reg) {
   await send(numero, msg).catch(e => console.error(`[evo] setor ${nomeSetor}: ${e.message}`));
 }
 
-module.exports = { send, enviarEntrada, enviarSaida, enviarSetor };
+async function enviarOcorrencia(oc) {
+  const { resp } = await getConfig();
+  const pad = n => String(n).padStart(2, '0');
+  const d = new Date(oc.dataHora);
+  const hora = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+  const data = `${pad(d.getUTCDate())}/${pad(d.getUTCMonth()+1)}/${d.getUTCFullYear()}`;
+  const descTrunc = oc.descricao?.length > 300 ? oc.descricao.slice(0, 297) + '...' : oc.descricao;
+  const envolvidos = Array.isArray(oc.envolvidos) ? oc.envolvidos.length : 0;
+  const acionamentos = Array.isArray(oc.acionamentos) ? oc.acionamentos.length : 0;
+
+  const msg =
+    `🚨 *SOS Entry — Nova Ocorrência*\n\n` +
+    `📋 Protocolo: *${oc.protocolo}*\n` +
+    `🗂️ Categoria: ${oc.categoria}\n` +
+    `📌 Tipo: ${oc.tipo}\n` +
+    `📍 Local: ${oc.local}\n` +
+    `🕐 Data/Hora: ${hora} · ${data}\n` +
+    `👤 Registrado por: ${oc.registradoPor?.nome || '-'}\n` +
+    (envolvidos   ? `👥 Envolvidos: ${envolvidos} pessoa(s)\n` : '') +
+    (acionamentos ? `📞 Acionamentos: ${acionamentos} serviço(s)\n` : '') +
+    `\n📝 *Descrição:*\n${descTrunc}\n\n` +
+    `⚠️ Status: ${oc.status?.replace('_', ' ').toUpperCase()}`;
+
+  const tasks = [];
+  if (resp) tasks.push(send(resp, msg).catch(e => console.error(`[evo] ocorrência responsável: ${e.message}`)));
+  await Promise.allSettled(tasks);
+}
+
+module.exports = { send, enviarEntrada, enviarSaida, enviarSetor, enviarOcorrencia };

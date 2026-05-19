@@ -1,4 +1,32 @@
 const prisma = require('../lib/prisma');
+const evo    = require('../services/evolution.service');
+
+async function notificarOcorrencia(oc) {
+  try {
+    // 1. Responsável pré-configurado (evo_responsavel)
+    evo.enviarOcorrencia(oc).catch(e => console.error('[evo] ocorrência:', e.message));
+
+    // 2. Usuários com recebeWhatsapp=true (deduplicado)
+    const usuarios = await prisma.user.findMany({
+      where: { ativo: true, recebeWhatsapp: true, telefone: { not: null } },
+      select: { nome: true, telefone: true },
+    });
+    const pad = n => String(n).padStart(2, '0');
+    const d = new Date(oc.dataHora);
+    const hora = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+    const data = `${pad(d.getUTCDate())}/${pad(d.getUTCMonth()+1)}/${d.getUTCFullYear()}`;
+    const descTrunc = oc.descricao?.length > 200 ? oc.descricao.slice(0, 197) + '...' : oc.descricao;
+    const msg =
+      `🚨 *SOS Entry — Ocorrência [${oc.categoria}]*\n\n` +
+      `📋 ${oc.protocolo}\n📌 ${oc.tipo}\n📍 ${oc.local}\n🕐 ${hora} · ${data}\n\n` +
+      `📝 ${descTrunc}`;
+    for (const u of usuarios) {
+      evo.send(u.telefone, msg).catch(e => console.error(`[evo] usuário ${u.nome}: ${e.message}`));
+    }
+  } catch (e) {
+    console.error('[ocorrência] erro ao notificar:', e.message);
+  }
+}
 
 function gerarProtocolo() {
   const now = new Date();
@@ -57,6 +85,8 @@ exports.criar = async (req, res, next) => {
       entidade: 'ocorrencia', entidadeId: ocorrencia.id,
       detalhes: { protocolo: ocorrencia.protocolo, categoria: ocorrencia.categoria }
     }}).catch(e => console.warn('[audit]', e.message));
+
+    notificarOcorrencia(ocorrencia);
 
     res.status(201).json(ocorrencia);
   } catch(e) { next(e); }
