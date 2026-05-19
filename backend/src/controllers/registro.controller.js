@@ -243,7 +243,7 @@ exports.saida = async (req, res, next) => {
 
 exports.listar = async (req, res, next) => {
   try {
-    const { page=1, status, busca, dataInicio, dataFim } = req.query;
+    const { page=1, status, busca, dataInicio, dataFim, tipoOperacao } = req.query;
     const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100)
     const skip = (Number(page)-1)*limit;
     const where = {};
@@ -268,6 +268,12 @@ exports.listar = async (req, res, next) => {
       where.dataEntrada = {}
       if (inicio) where.dataEntrada.gte = inicio
       if (fim)    where.dataEntrada.lte = fim
+    }
+    if (tipoOperacao) {
+      const mapa = { visitas: ['Visita','Reunião','Entrevista'], coletas: ['Coleta'], entregas: ['Entrega'] }
+      where.tipoOperacao = mapa[tipoOperacao]
+        ? { in: mapa[tipoOperacao] }
+        : { equals: tipoOperacao, mode: 'insensitive' }
     }
     const [registros, total] = await Promise.all([
       prisma.registro.findMany({ where, skip, take: limit,
