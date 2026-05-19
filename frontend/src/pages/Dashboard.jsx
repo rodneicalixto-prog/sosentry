@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Users, LogIn, LogOut, BarChart2, PlusCircle, RefreshCw, Clock } from 'lucide-react'
+import { Users, LogIn, LogOut, BarChart2, PlusCircle, RefreshCw, Clock, ArrowRight } from 'lucide-react'
 import api from '../api/client'
 import StatusBadge from '../components/StatusBadge'
 import { useRealtimeCtx } from '../contexts/RealtimeContext'
@@ -17,13 +17,19 @@ function formatDateTime(iso) {
   })
 }
 
-function StatCard({ icon: Icon, label, value, color }) {
+function StatCard({ icon: Icon, label, value, color, to }) {
+  const navigate = useNavigate()
+  const isClickable = !!to
   return (
-    <div className="card p-5 flex items-center gap-4">
+    <div
+      className={`card p-5 flex items-center gap-4 transition-all ${isClickable ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 active:translate-y-0' : ''}`}
+      onClick={isClickable ? () => navigate(to) : undefined}
+      title={isClickable ? `Ver ${label}` : undefined}
+    >
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
         <Icon className="w-6 h-6 text-white" />
       </div>
-      <div>
+      <div className="flex-1 min-w-0">
         <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>
         <p className="text-2xl font-bold text-gray-800 mt-0.5">
           {value === null ? (
@@ -33,8 +39,13 @@ function StatCard({ icon: Icon, label, value, color }) {
           )}
         </p>
       </div>
+      {isClickable && <ArrowRight className="w-4 h-4 text-gray-300 flex-shrink-0" />}
     </div>
   )
+}
+
+function hoje() {
+  return new Date().toISOString().slice(0, 10)
 }
 
 export default function Dashboard() {
@@ -122,30 +133,35 @@ export default function Dashboard() {
           label="Na Fila"
           value={resumo ? resumo.naFila : null}
           color="bg-yellow-500"
+          to="/registros?status=na_fila"
         />
         <StatCard
           icon={Users}
           label="Na Empresa"
           value={resumo ? resumo.naEmpresa : null}
           color="bg-green-500"
+          to="/registros?status=na_empresa"
         />
         <StatCard
           icon={LogIn}
           label="Entradas Hoje"
           value={resumo ? resumo.entradaHoje : null}
           color="bg-primary-700"
+          to={`/registros?dataInicio=${hoje()}&dataFim=${hoje()}`}
         />
         <StatCard
           icon={LogOut}
           label="Saídas Hoje"
           value={resumo ? resumo.saidaHoje : null}
           color="bg-accent-500"
+          to={`/registros?status=saiu&dataInicio=${hoje()}&dataFim=${hoje()}`}
         />
         <StatCard
           icon={BarChart2}
           label="Total Registros"
           value={resumo ? resumo.total : null}
           color="bg-gray-500"
+          to="/registros"
         />
       </div>
 
