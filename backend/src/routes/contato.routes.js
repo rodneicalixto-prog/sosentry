@@ -1,9 +1,9 @@
 const express = require('express');
 const r = express.Router();
-const { authMiddleware, requireRole } = require('../middleware/auth.middleware');
+const { authenticate, requireRole } = require('../middleware/auth.middleware');
 const c = require('../controllers/contato.controller');
 
-r.use(authMiddleware);
+r.use(authenticate);
 r.get('/eventos', requireRole('admin'), c.eventos);
 r.get('/',        requireRole('admin'), c.listar);
 r.post('/',       requireRole('admin'), c.criar);
