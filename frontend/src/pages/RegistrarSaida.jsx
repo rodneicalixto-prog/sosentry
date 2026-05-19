@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { Search, LogOut, CheckCircle, Tag, AlertTriangle } from 'lucide-react'
+import { Search, LogOut, CheckCircle, AlertTriangle } from 'lucide-react'
 import api from '../api/client'
 import StatusBadge from '../components/StatusBadge'
+import FotoUpload from '../components/FotoUpload'
 
 function fmt(iso) {
   if (!iso) return '—'
@@ -17,13 +18,17 @@ export default function RegistrarSaida() {
   const [confirmando, setConfirmando] = useState(false)
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
-  const [lacre, setLacre] = useState('')
+  const [lacreImageUrl, setLacreImageUrl] = useState(null)
+  const [fotoCarroceriaUrl, setFotoCarroceriaUrl] = useState(null)
   const [obsOcorrencia, setObsOcorrencia] = useState('')
+
+  const isEntrega = registro?.tipoOperacao?.toLowerCase() === 'entrega'
 
   async function buscar(e) {
     e.preventDefault()
     if (!protocolo.trim()) return
-    setErro(''); setSucesso(''); setRegistro(null); setLacre(''); setObsOcorrencia('')
+    setErro(''); setSucesso(''); setRegistro(null)
+    setLacreImageUrl(null); setFotoCarroceriaUrl(null); setObsOcorrencia('')
     setBuscando(true)
     try {
       const { data } = await api.get('/api/registros', { params: { busca: protocolo.trim(), limit: 1 } })
@@ -42,11 +47,22 @@ export default function RegistrarSaida() {
   async function confirmarSaida(e) {
     e.preventDefault()
     if (!registro) return
+
+    if (isEntrega && !fotoCarroceriaUrl) {
+      setErro('Foto da carroceria aberta é obrigatória para operações de Entrega.')
+      return
+    }
+
     setConfirmando(true); setErro('')
     try {
-      await api.patch(`/api/registros/${registro.protocolo}/saida`, { lacre, obsOcorrencia })
+      await api.patch(`/api/registros/${registro.protocolo}/saida`, {
+        lacreImageUrl,
+        fotoCarroceriaUrl,
+        obsOcorrencia,
+      })
       setSucesso(`Saída registrada — protocolo ${registro.protocolo}`)
-      setRegistro(null); setProtocolo(''); setLacre(''); setObsOcorrencia('')
+      setRegistro(null); setProtocolo('')
+      setLacreImageUrl(null); setFotoCarroceriaUrl(null); setObsOcorrencia('')
     } catch (e) {
       setErro(e.response?.data?.error || 'Erro ao registrar saída.')
     } finally {
@@ -122,18 +138,22 @@ export default function RegistrarSaida() {
             <form onSubmit={confirmarSaida} className="p-5 space-y-4 bg-orange-50/40">
               <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">Dados da Saída</h3>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <Tag className="w-3.5 h-3.5 inline mr-1 text-gray-400" />
-                  Nº do Lacre
-                </label>
-                <input
-                  className={inp}
-                  placeholder="Número do lacre do veículo (opcional)"
-                  value={lacre}
-                  onChange={e => setLacre(e.target.value)}
+              <FotoUpload
+                label="Foto do Lacre"
+                value={lacreImageUrl}
+                onChange={setLacreImageUrl}
+                disabled={confirmando}
+              />
+
+              {isEntrega && (
+                <FotoUpload
+                  label="Foto da Carroceria Aberta"
+                  obrigatorio
+                  value={fotoCarroceriaUrl}
+                  onChange={setFotoCarroceriaUrl}
+                  disabled={confirmando}
                 />
-              </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

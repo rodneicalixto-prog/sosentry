@@ -78,6 +78,8 @@ exports.criar = async (req, res, next) => {
     if (d.notaFiscal?.length > 50) return res.status(400).json({ error: 'Nota fiscal muito longa (máx 50 chars)' })
     if (d.obsMaterial?.length > 500) return res.status(400).json({ error: 'Observação de material muito longa (máx 500 chars)' })
     if (d.obsGeral?.length > 2000) return res.status(400).json({ error: 'Observação geral muito longa (máx 2000 chars)' })
+    if (!isPedestre && d.tipoOperacao?.toLowerCase() === 'coleta' && !d.notaFiscal)
+      return res.status(400).json({ error: 'Nota Fiscal obrigatória para operação de Coleta' })
     if (d.temAjudante && !ajNome) return res.status(400).json({ error: 'Nome do ajudante obrigatório' })
     if (ajCpf && !validarCPF(ajCpf)) return res.status(400).json({ error: 'CPF do ajudante inválido' })
     if (ajTel && !validarTelefone(ajTel)) return res.status(400).json({ error: 'Telefone do ajudante inválido (10–15 dígitos)' })
@@ -174,8 +176,11 @@ exports.autorizar = async (req, res, next) => {
 exports.saida = async (req, res, next) => {
   try {
     const { protocolo } = req.params;
-    const { lacre, obsOcorrencia } = req.body || {};
-    if (lacre?.length > 50) return res.status(400).json({ error: 'Lacre muito longo (máx 50 chars)' })
+    const { lacreImageUrl, fotoCarroceriaUrl, obsOcorrencia } = req.body || {};
+    if (lacreImageUrl && typeof lacreImageUrl !== 'string')
+      return res.status(400).json({ error: 'URL do lacre inválida' })
+    if (fotoCarroceriaUrl && typeof fotoCarroceriaUrl !== 'string')
+      return res.status(400).json({ error: 'URL da foto da carroceria inválida' })
     if (obsOcorrencia?.length > 2000) return res.status(400).json({ error: 'Observação muito longa (máx 2000 chars)' })
 
     // $transaction garante atomicidade — evita race condition de dois operadores
@@ -190,8 +195,9 @@ exports.saida = async (req, res, next) => {
           where: { protocolo },
           data: {
             horaSaida: new Date(), status: 'saiu', operadorSaidaId: req.user.id,
-            ...(lacre         && { lacre }),
-            ...(obsOcorrencia && { obsOcorrencia }),
+            ...(lacreImageUrl     && { lacreImageUrl }),
+            ...(fotoCarroceriaUrl && { fotoCarroceriaUrl }),
+            ...(obsOcorrencia     && { obsOcorrencia }),
           },
           include: { portaria: true, operadorEntrada: { select: { nome: true } }, operadorSaida: { select: { nome: true } } }
         })
