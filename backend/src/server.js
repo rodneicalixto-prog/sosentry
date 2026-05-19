@@ -4,11 +4,7 @@ const helmet     = require('helmet');
 const cors       = require('cors');
 const morgan     = require('morgan');
 const rateLimit  = require('express-rate-limit');
-const { PrismaClient } = require('@prisma/client');
-
-if (!process.env.FRONTEND_URL) console.warn('[AVISO] FRONTEND_URL não definido — CSRF e CORS podem falhar em produção');
-
-const prisma = new PrismaClient();
+const prisma = require('./lib/prisma');
 const app = express();
 
 // Limpa sessões expiradas a cada 6 horas

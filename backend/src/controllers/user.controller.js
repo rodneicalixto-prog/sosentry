@@ -1,6 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const HIER = ['operador','supervisor','admin','superadmin'];
 
 const SELECT_FIELDS = {
@@ -60,7 +59,7 @@ exports.atualizar = async (req, res, next) => {
     const { nome, email, role, turno, setor, telefone, recebeWhatsapp, ativo, senha } = req.body;
     const data = {};
     if (nome !== undefined)             data.nome             = nome;
-    if (email !== undefined)            data.email            = email;
+    if (email !== undefined)            data.email            = email || null;
     if (turno !== undefined)            data.turno            = turno || null;
     if (setor !== undefined)            data.setor            = setor || null;
     if (telefone !== undefined)         data.telefone         = telefone || null;

@@ -1,8 +1,8 @@
-import React, { useRef, useState } from 'react'
-import { Camera, Upload, X, Image as ImageIcon } from 'lucide-react'
+import React, { useRef, useState, useEffect } from 'react'
+import { Camera, X, Image as ImageIcon } from 'lucide-react'
 
-const SUPABASE_URL = 'https://yshvniyhtnyhnjcecbft.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzaHZuaXlodG55aG5qY2VjYmZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MDcyMTMsImV4cCI6MjA5MjI4MzIxM30.0tYb9047OInZtAW3SAi2zS-m7sudE3Ui-HjZxIfj87c'
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://yshvniyhtnyhnjcecbft.supabase.co'
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzaHZuaXlodG55aG5qY2VjYmZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MDcyMTMsImV4cCI6MjA5MjI4MzIxM30.0tYb9047OInZtAW3SAi2zS-m7sudE3Ui-HjZxIfj87c'
 const BUCKET = 'fotos-saida'
 
 export async function uploadFoto(file) {
@@ -28,6 +28,11 @@ export default function FotoUpload({ label, obrigatorio = false, value, onChange
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState('')
   const [preview, setPreview] = useState(null)
+
+  // Revoga o blob URL quando o preview muda ou o componente desmonta (evita memory leak)
+  useEffect(() => {
+    return () => { if (preview) URL.revokeObjectURL(preview) }
+  }, [preview])
 
   async function handleFile(file) {
     if (!file) return
@@ -75,13 +80,13 @@ export default function FotoUpload({ label, obrigatorio = false, value, onChange
           onClick={() => inputRef.current?.click()}
         >
           <Camera className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-          <p className="text-sm text-gray-500">Toque para tirar foto ou selecionar imagem</p>
+          <p className="text-sm text-gray-500">Toque para tirar foto ou selecionar da galeria</p>
           <p className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP, HEIC · máx 10 MB</p>
+          {/* Sem capture="environment" para permitir câmera E galeria em todos os dispositivos */}
           <input
             ref={inputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             className="hidden"
             disabled={disabled}
             onChange={e => handleFile(e.target.files?.[0])}
@@ -97,7 +102,7 @@ export default function FotoUpload({ label, obrigatorio = false, value, onChange
       )}
 
       {value && !enviando && (
-        <div className="relative inline-block">
+        <div className="relative inline-block w-full">
           <img
             src={preview || value}
             alt="Foto"
