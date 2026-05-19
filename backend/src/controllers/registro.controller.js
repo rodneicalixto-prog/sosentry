@@ -289,3 +289,66 @@ exports.buscar = async (req, res, next) => {
     res.json(reg);
   } catch(e){ next(e); }
 };
+
+exports.exportar = async (req, res, next) => {
+  try {
+    const { status, busca, dataInicio, dataFim } = req.query;
+    const where = {};
+    if (status) where.status = status;
+    if (busca) {
+      if (typeof busca !== 'string' || busca.length > 100)
+        return res.status(400).json({ error: 'Busca inválida' });
+      const term = busca.trim();
+      where.OR = [
+        { protocolo:     { contains: term, mode: 'insensitive' } },
+        { nomeMotorista: { contains: term, mode: 'insensitive' } },
+        { placa:         { contains: term, mode: 'insensitive' } },
+      ];
+    }
+    if (dataInicio || dataFim) {
+      const inicio = dataInicio ? new Date(dataInicio + 'T00:00:00Z') : null;
+      const fim    = dataFim    ? new Date(dataFim    + 'T23:59:59Z') : null;
+      if ((inicio && isNaN(inicio)) || (fim && isNaN(fim)))
+        return res.status(400).json({ error: 'Data inválida (use YYYY-MM-DD)' });
+      where.dataEntrada = {};
+      if (inicio) where.dataEntrada.gte = inicio;
+      if (fim)    where.dataEntrada.lte = fim;
+    }
+
+    const registros = await prisma.registro.findMany({
+      where,
+      take: 5000,
+      orderBy: { dataEntrada: 'desc' },
+      include: {
+        portaria:       { select: { nome: true, numero: true } },
+        operadorEntrada:{ select: { nome: true } },
+        operadorSaida:  { select: { nome: true } },
+      },
+    });
+
+    const fmt = (iso) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const p = n => String(n).padStart(2, '0');
+      return `${p(d.getUTCDate())}/${p(d.getUTCMonth()+1)}/${d.getUTCFullYear()} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+    };
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+    const header = ['Protocolo','Status','Portaria','Data Entrada','Hora Saída','Motorista','CPF','Telefone','Placa','Tipo Veículo','Empresa','Nota Fiscal','Tipo Operação','Setor Destino','Operador Entrada','Operador Saída','Obs Ocorrência'];
+    const rows = registros.map(r => [
+      r.protocolo, r.status, r.portaria?.nome ?? '',
+      fmt(r.dataEntrada), fmt(r.horaSaida),
+      r.nomeMotorista, r.cpfMotorista, r.telefoneMotorista ?? '',
+      r.placa, r.tipoVeiculo ?? '', r.empresa ?? '', r.notaFiscal ?? '',
+      r.tipoOperacao ?? '', r.setorDestino ?? '',
+      r.operadorEntrada?.nome ?? '', r.operadorSaida?.nome ?? '',
+      r.obsOcorrencia ?? '',
+    ].map(esc).join(','));
+
+    const csv = '﻿' + [header.join(','), ...rows].join('\r\n');
+    const filename = `registros_${new Date().toISOString().slice(0,10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch(e) { next(e); }
+};
