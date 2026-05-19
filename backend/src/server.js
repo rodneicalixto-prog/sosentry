@@ -71,6 +71,7 @@ app.use('/api/eventos',    require('./routes/eventos.routes'));
 app.use('/api/relatorios',    require('./routes/relatorio.routes'));
 app.use('/api/configuracoes', require('./routes/configuracao.routes'));
 app.use('/api/ocorrencias',   require('./routes/ocorrencia.routes'));
+app.use('/api/contatos-notificacao', require('./routes/contato.routes'));
 
 app.get('/health', async (_, res) => {
   try {

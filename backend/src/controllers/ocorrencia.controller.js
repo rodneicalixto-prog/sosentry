@@ -1,5 +1,6 @@
-const prisma = require('../lib/prisma');
-const evo    = require('../services/evolution.service');
+const prisma   = require('../lib/prisma');
+const evo      = require('../services/evolution.service');
+const notifSvc = require('../services/notificacao.service');
 
 async function notificarOcorrencia(oc) {
   try {
@@ -86,7 +87,8 @@ exports.criar = async (req, res, next) => {
       detalhes: { protocolo: ocorrencia.protocolo, categoria: ocorrencia.categoria }
     }}).catch(e => console.warn('[audit]', e.message));
 
-    notificarOcorrencia(ocorrencia);
+    notificarOcorrencia(ocorrencia);        // responsável geral + recebeWhatsapp
+    notifSvc.ocorrencia(ocorrencia);        // contatos configurados por categoria
 
     res.status(201).json(ocorrencia);
   } catch(e) { next(e); }

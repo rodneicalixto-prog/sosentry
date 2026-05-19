@@ -2,6 +2,7 @@ const prisma = require('../lib/prisma');
 const evo = require('../services/evolution.service');
 const webhookSvc = require('../services/webhook.service');
 const sseSvc = require('../services/sse.service');
+const notifSvc = require('../services/notificacao.service');
 
 async function dispararSetores(evento, reg) {
   try {
@@ -148,6 +149,7 @@ exports.criar = async (req, res, next) => {
 
     evo.enviarEntrada(registro).catch(e => console.error('Evo erro:', e.message));
     dispararSetores('entrada', registro);
+    notifSvc.portariaEntrada(registro);
     webhookSvc.disparar('entrada', registro).catch(e => console.error('Webhook entrada erro:', e.message));
     sseSvc.broadcast('entrada', {
       protocolo: registro.protocolo, placa: registro.placa, nomeMotorista: registro.nomeMotorista,
@@ -229,6 +231,7 @@ exports.saida = async (req, res, next) => {
 
     evo.enviarSaida(updated).catch(e => console.error('Evo saída erro:', e.message));
     dispararSetores('saida', updated);
+    notifSvc.portariaSaida(updated);
     webhookSvc.disparar('saida', updated).catch(e => console.error('Webhook saída erro:', e.message));
     sseSvc.broadcast('saida', {
       protocolo, placa: updated.placa, nomeMotorista: updated.nomeMotorista,
