@@ -30,8 +30,8 @@ app.use(helmet({
     }
   }
 }));
-const corsOrigins = (process.env.FRONTEND_URL || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean)
-app.use(cors({ origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins, credentials: true }));
+const corsOrigins = (process.env.FRONTEND_URL || '').split(/[,;]/).map(s => s.trim().replace(/\/$/, '')).filter(s => s.startsWith('http'))
+app.use(cors({ origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins.length > 1 ? corsOrigins : true, credentials: true }));
 // Morgan sem expor o token JWT passado via ?token= (SSE)
 app.use(morgan((tokens, req, res) => {
   try {
