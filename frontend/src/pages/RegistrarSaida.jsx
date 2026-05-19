@@ -48,6 +48,10 @@ export default function RegistrarSaida() {
     e.preventDefault()
     if (!registro) return
 
+    if (!lacreImageUrl) {
+      setErro('Foto do lacre é obrigatória.')
+      return
+    }
     if (isEntrega && !fotoCarroceriaUrl) {
       setErro('Foto da carroceria aberta é obrigatória para operações de Entrega.')
       return
@@ -140,6 +144,7 @@ export default function RegistrarSaida() {
 
               <FotoUpload
                 label="Foto do Lacre"
+                obrigatorio
                 value={lacreImageUrl}
                 onChange={setLacreImageUrl}
                 disabled={confirmando}

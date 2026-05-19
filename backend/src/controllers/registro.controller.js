@@ -195,7 +195,9 @@ exports.saida = async (req, res, next) => {
     const { protocolo } = req.params;
     const { lacreImageUrl, fotoCarroceriaUrl, obsOcorrencia } = req.body || {};
     const FOTO_PREFIX = 'https://yshvniyhtnyhnjcecbft.supabase.co/storage/v1/object/public/fotos-saida/';
-    if (lacreImageUrl && (typeof lacreImageUrl !== 'string' || !lacreImageUrl.startsWith(FOTO_PREFIX)))
+    if (!lacreImageUrl)
+      return res.status(400).json({ error: 'Foto do lacre obrigatória' })
+    if (typeof lacreImageUrl !== 'string' || !lacreImageUrl.startsWith(FOTO_PREFIX))
       return res.status(400).json({ error: 'URL do lacre inválida' })
     if (fotoCarroceriaUrl && (typeof fotoCarroceriaUrl !== 'string' || !fotoCarroceriaUrl.startsWith(FOTO_PREFIX)))
       return res.status(400).json({ error: 'URL da foto da carroceria inválida' })

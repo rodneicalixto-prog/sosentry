@@ -33,6 +33,10 @@ function SaidaModal({ registro, onSave, onCancel }) {
 
   async function submit(e) {
     e.preventDefault()
+    if (!lacreImageUrl) {
+      setErro('Foto do lacre é obrigatória.')
+      return
+    }
     if (isEntrega && !fotoCarroceriaUrl) {
       setErro('Foto da carroceria aberta é obrigatória para operações de Entrega.')
       return
@@ -77,6 +81,7 @@ function SaidaModal({ registro, onSave, onCancel }) {
 
           <FotoUpload
             label="Foto do Lacre"
+            obrigatorio
             value={lacreImageUrl}
             onChange={setLacreImageUrl}
             disabled={salvando}
