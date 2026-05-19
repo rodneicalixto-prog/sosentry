@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, PlusCircle, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Search, PlusCircle, ChevronLeft, ChevronRight, X, Download } from 'lucide-react'
 import api from '../api/client'
 import StatusBadge from '../components/StatusBadge'
 
@@ -8,67 +8,127 @@ function formatDateTime(iso) {
   if (!iso) return '—'
   const d = new Date(iso)
   return d.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
   })
 }
 
+const LIMIT = 15
+
 export default function Registros() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Lê filtros e página diretamente da URL
+  const status     = searchParams.get('status')     || ''
+  const dataInicio = searchParams.get('dataInicio') || ''
+  const dataFim    = searchParams.get('dataFim')    || ''
+  const page       = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+
+  // Campo de busca: estado local, só vai para URL ao submeter
+  const [buscaInput, setBuscaInput] = useState(() => searchParams.get('busca') || '')
+  const busca = searchParams.get('busca') || ''
+
   const [registros, setRegistros] = useState([])
-  const [total, setTotal] = useState(0)
+  const [total, setTotal]         = useState(0)
   const [totalPages, setTotalPages] = useState(1)
-  const [page, setPage] = useState(1)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState('')
+  const [exporting, setExporting] = useState(false)
 
-  const [busca, setBusca] = useState(() => searchParams.get('busca') || '')
-  const [status, setStatus] = useState(() => searchParams.get('status') || '')
-  const [dataInicio, setDataInicio] = useState(() => searchParams.get('dataInicio') || '')
-  const [dataFim, setDataFim] = useState(() => searchParams.get('dataFim') || '')
+  // Atualiza URL sem causar reset de página ao mudar apenas a página
+  const updateParams = useCallback((updates, resetPage = true) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      Object.entries(updates).forEach(([k, v]) => {
+        if (v) next.set(k, v)
+        else next.delete(k)
+      })
+      if (resetPage) next.delete('page')
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
 
-  const LIMIT = 15
+  const goToPage = useCallback((pg) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (pg > 1) next.set('page', String(pg))
+      else next.delete('page')
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
 
-  const fetchRegistros = useCallback(async (pg = 1) => {
+  const abortRef = useRef(null)
+
+  const fetchRegistros = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     setLoading(true)
     setError('')
     try {
-      const params = { page: pg, limit: LIMIT }
-      if (busca) params.busca = busca
-      if (status) params.status = status
+      const params = { page, limit: LIMIT }
+      if (busca)      params.busca      = busca
+      if (status)     params.status     = status
       if (dataInicio) params.dataInicio = dataInicio
-      if (dataFim) params.dataFim = dataFim
-      const { data } = await api.get('/api/registros', { params })
+      if (dataFim)    params.dataFim    = dataFim
+      const { data } = await api.get('/api/registros', { params, signal: controller.signal })
       setRegistros(data.registros || [])
       setTotal(data.total || 0)
       setTotalPages(data.totalPages || 1)
-      setPage(pg)
-    } catch {
-      setError('Erro ao carregar registros.')
+    } catch (err) {
+      if (err.name !== 'AbortError' && err.code !== 'ERR_CANCELED')
+        setError('Erro ao carregar registros.')
     } finally {
       setLoading(false)
     }
-  }, [busca, status, dataInicio, dataFim])
+  }, [busca, status, dataInicio, dataFim, page])
 
   useEffect(() => {
-    fetchRegistros(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busca, status, dataInicio, dataFim])
+    fetchRegistros()
+    return () => { if (abortRef.current) abortRef.current.abort() }
+  }, [fetchRegistros])
+
+  // Sincroniza o input de busca quando a URL muda externamente (ex: botão voltar)
+  useEffect(() => {
+    setBuscaInput(searchParams.get('busca') || '')
+  }, [searchParams])
 
   const handleSearch = (e) => {
     e.preventDefault()
-    fetchRegistros(1)
+    updateParams({ busca: buscaInput.trim() }, true)
   }
 
   const clearFilters = () => {
-    setBusca('')
-    setStatus('')
-    setDataInicio('')
-    setDataFim('')
+    setBuscaInput('')
+    setSearchParams({}, { replace: true })
+  }
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const params = {}
+      if (busca)      params.busca      = busca
+      if (status)     params.status     = status
+      if (dataInicio) params.dataInicio = dataInicio
+      if (dataFim)    params.dataFim    = dataFim
+
+      const { data } = await api.get('/api/registros/exportar', {
+        params,
+        responseType: 'blob',
+      })
+      const url  = URL.createObjectURL(new Blob([data], { type: 'text/csv;charset=utf-8;' }))
+      const link = document.createElement('a')
+      link.href  = url
+      link.download = `registros_${new Date().toISOString().slice(0, 10)}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError('Erro ao exportar. Tente novamente.')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const hasFilters = busca || status || dataInicio || dataFim
@@ -80,48 +140,59 @@ export default function Registros() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Registros</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {total > 0 ? `${total} registro${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}` : 'Controle de entradas e saídas'}
+            {total > 0
+              ? `${total} registro${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}`
+              : 'Controle de entradas e saídas'}
           </p>
         </div>
-        <Link to="/registros/novo" className="btn-accent">
-          <PlusCircle className="w-4 h-4" />
-          Nova Entrada
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={exporting || loading || total === 0}
+            className="btn-secondary btn-sm"
+            title="Exportar registros filtrados em CSV"
+          >
+            <Download className={`w-4 h-4 ${exporting ? 'animate-bounce' : ''}`} />
+            <span className="hidden sm:inline">{exporting ? 'Exportando…' : 'Exportar CSV'}</span>
+          </button>
+          <Link to="/registros/novo" className="btn-accent">
+            <PlusCircle className="w-4 h-4" />
+            Nova Entrada
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="card p-4">
         <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          {/* Search */}
           <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
+              value={buscaInput}
+              onChange={(e) => setBuscaInput(e.target.value)}
               placeholder="Motorista, placa, empresa, protocolo…"
               className="input pl-9"
             />
           </div>
 
-          {/* Status */}
           <select
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => updateParams({ status: e.target.value })}
             className="input w-full sm:w-44"
           >
             <option value="">Todos os status</option>
+            <option value="na_fila">Na fila</option>
             <option value="na_empresa">Na empresa</option>
             <option value="saiu">Saiu</option>
             <option value="cancelado">Cancelado</option>
           </select>
 
-          {/* Date range */}
           <div className="flex gap-2 w-full sm:w-auto">
             <input
               type="date"
               value={dataInicio}
-              onChange={(e) => setDataInicio(e.target.value)}
+              onChange={(e) => updateParams({ dataInicio: e.target.value })}
               className="input flex-1 sm:w-36"
               title="Data início"
             />
@@ -129,7 +200,7 @@ export default function Registros() {
             <input
               type="date"
               value={dataFim}
-              onChange={(e) => setDataFim(e.target.value)}
+              onChange={(e) => updateParams({ dataFim: e.target.value })}
               className="input flex-1 sm:w-36"
               title="Data fim"
             />
@@ -179,8 +250,7 @@ export default function Registros() {
                     <p className="font-semibold text-gray-900 truncate">{r.nomeMotorista}</p>
                     <p className="text-xs font-mono text-gray-400 mt-0.5">{r.protocolo}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {r.placa} · {r.tipoVeiculo}
-                      {r.empresa ? ` · ${r.empresa}` : ''}
+                      {r.placa} · {r.tipoVeiculo}{r.empresa ? ` · ${r.empresa}` : ''}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">{formatDateTime(r.dataEntrada)}</p>
                   </div>
@@ -229,11 +299,11 @@ export default function Registros() {
         {!loading && totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
             <p className="text-sm text-gray-500">
-              Página {page} de {totalPages}
+              Página {page} de {totalPages} · {total} registros
             </p>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => fetchRegistros(page - 1)}
+                onClick={() => goToPage(page - 1)}
                 disabled={page <= 1}
                 className="btn-secondary btn-sm disabled:opacity-40"
               >
@@ -249,11 +319,9 @@ export default function Registros() {
                 return (
                   <button
                     key={pg}
-                    onClick={() => fetchRegistros(pg)}
+                    onClick={() => goToPage(pg)}
                     className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                      pg === page
-                        ? 'bg-primary-700 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
+                      pg === page ? 'bg-primary-700 text-white' : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
                     {pg}
@@ -261,7 +329,7 @@ export default function Registros() {
                 )
               })}
               <button
-                onClick={() => fetchRegistros(page + 1)}
+                onClick={() => goToPage(page + 1)}
                 disabled={page >= totalPages}
                 className="btn-secondary btn-sm disabled:opacity-40"
               >
