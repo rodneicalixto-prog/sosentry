@@ -1,7 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const { disparar } = require('../services/webhook.service');
-
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const EVENTOS_VALIDOS = ['entrada', 'saida', 'cancelado'];
 

@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const CHAVES = ['evo_url', 'evo_key', 'evo_instance', 'evo_responsavel'];
 

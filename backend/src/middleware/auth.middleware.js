@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const HIERARCHY = ['operador','supervisor','admin','superadmin'];
 
 async function authenticate(req, res, next) {

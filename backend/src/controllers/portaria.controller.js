@@ -1,9 +1,10 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
+const ROLES_ADMIN = ['admin', 'superadmin'];
 
 exports.listar = async (req, res, next) => {
   try {
-    const all = req.query.all === 'true';
+    // ?all=true só para admins — operadores/supervisores veem apenas portarias ativas
+    const all = req.query.all === 'true' && ROLES_ADMIN.includes(req.user.role);
     const portarias = await prisma.portaria.findMany({
       where: all ? {} : { ativo: true },
       orderBy: { numero: 'asc' },
@@ -19,11 +20,11 @@ exports.criar = async (req, res, next) => {
     if (!['transportes','pedestres'].includes(tipo))
       return res.status(400).json({ error: 'Tipo inválido (transportes ou pedestres)' });
 
-    const maior = await prisma.portaria.findFirst({ orderBy: { numero: 'desc' } });
-    const numero = (maior?.numero || 0) + 1;
-
-    const portaria = await prisma.portaria.create({
-      data: { nome: nome.trim(), tipo, numero },
+    // Geração atômica do número para evitar race condition em criações simultâneas
+    const portaria = await prisma.$transaction(async (tx) => {
+      const maior = await tx.portaria.findFirst({ orderBy: { numero: 'desc' } });
+      const numero = (maior?.numero || 0) + 1;
+      return tx.portaria.create({ data: { nome: nome.trim(), tipo, numero } });
     });
     res.status(201).json(portaria);
   } catch(e){ next(e); }

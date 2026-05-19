@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 exports.resumo = async (req, res, next) => {
   try {
     const hoje = new Date(); hoje.setHours(0,0,0,0);

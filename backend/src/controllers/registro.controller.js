@@ -1,11 +1,12 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const evo = require('../services/evolution.service');
 const webhookSvc = require('../services/webhook.service');
 const sseSvc = require('../services/sse.service');
 
 async function dispararSetores(evento, reg) {
   try {
+    const numerosNotificados = new Set();
+
     // 1. Regras de setor configuradas
     const setores = await prisma.notificacaoSetor.findMany({ where: { ativo: true } });
     for (const s of setores) {
@@ -20,17 +21,22 @@ async function dispararSetores(evento, reg) {
         match = val === s.criterioValor;
       }
       if (match) {
+        const num = s.telefone.replace(/\D/g, '');
+        numerosNotificados.add(num);
         evo.enviarSetor(s.telefone, s.nome, evento, reg)
           .catch(e => console.error(`[evo] setor ${s.nome}: ${e.message}`));
       }
     }
 
-    // 2. Usuários com recebeWhatsapp=true e telefone cadastrado
+    // 2. Usuários com recebeWhatsapp=true — deduplica em relação às regras de setor
     const usuarios = await prisma.user.findMany({
       where: { ativo: true, recebeWhatsapp: true, telefone: { not: null } },
       select: { nome: true, telefone: true },
     });
     for (const u of usuarios) {
+      const num = u.telefone.replace(/\D/g, '');
+      if (numerosNotificados.has(num)) continue;
+      numerosNotificados.add(num);
       evo.enviarSetor(u.telefone, u.nome, evento, reg)
         .catch(e => console.error(`[evo] usuário ${u.nome}: ${e.message}`));
     }
@@ -188,9 +194,10 @@ exports.saida = async (req, res, next) => {
   try {
     const { protocolo } = req.params;
     const { lacreImageUrl, fotoCarroceriaUrl, obsOcorrencia } = req.body || {};
-    if (lacreImageUrl && typeof lacreImageUrl !== 'string')
+    const FOTO_PREFIX = 'https://yshvniyhtnyhnjcecbft.supabase.co/storage/v1/object/public/fotos-saida/';
+    if (lacreImageUrl && (typeof lacreImageUrl !== 'string' || !lacreImageUrl.startsWith(FOTO_PREFIX)))
       return res.status(400).json({ error: 'URL do lacre inválida' })
-    if (fotoCarroceriaUrl && typeof fotoCarroceriaUrl !== 'string')
+    if (fotoCarroceriaUrl && (typeof fotoCarroceriaUrl !== 'string' || !fotoCarroceriaUrl.startsWith(FOTO_PREFIX)))
       return res.status(400).json({ error: 'URL da foto da carroceria inválida' })
     if (obsOcorrencia?.length > 2000) return res.status(400).json({ error: 'Observação muito longa (máx 2000 chars)' })
 
@@ -223,7 +230,7 @@ exports.saida = async (req, res, next) => {
     webhookSvc.disparar('saida', updated).catch(e => console.error('Webhook saída erro:', e.message));
     sseSvc.broadcast('saida', {
       protocolo, placa: updated.placa, nomeMotorista: updated.nomeMotorista,
-      empresa: updated.empresa, lacre: updated.lacre, operador: req.user.nome
+      empresa: updated.empresa, lacreImageUrl: updated.lacreImageUrl, operador: req.user.nome
     });
     res.json(updated);
   } catch(e){ next(e); }

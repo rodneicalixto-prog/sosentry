@@ -1,9 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const crypto = require('crypto');
-const https = require('https');
-const http = require('http');
-
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // IPs/hostnames internos bloqueados para prevenir SSRF
 const BLOQUEADOS = ['127.0.0.1', 'localhost', '0.0.0.0', '::1', '::ffff:127.0.0.1']
