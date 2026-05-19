@@ -12,6 +12,7 @@ import {
   X,
   ShieldCheck,
   BarChart2,
+  AlertTriangle,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -20,6 +21,7 @@ const NAV = [
   { to: '/registros', label: 'Registros', icon: ClipboardList, minRole: 'supervisor' },
   { to: '/registros/novo', label: 'Nova Entrada', icon: PlusCircle, minRole: 'operador', accent: true },
   { to: '/saida', label: 'Registrar Saída', icon: LogOutIcon, minRole: 'operador' },
+  { to: '/ocorrencias', label: 'Ocorrências', icon: AlertTriangle, minRole: 'operador' },
 ]
 
 const ADMIN_NAV = [

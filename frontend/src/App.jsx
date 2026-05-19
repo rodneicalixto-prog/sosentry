@@ -19,6 +19,9 @@ import Webhooks      from './pages/admin/Webhooks'
 import Relatorios    from './pages/admin/Relatorios'
 import Configuracoes from './pages/admin/Configuracoes'
 import RegistrarSaida from './pages/RegistrarSaida'
+import Ocorrencias from './pages/Ocorrencias'
+import NovaOcorrencia from './pages/NovaOcorrencia'
+import OcorrenciaDetalhe from './pages/OcorrenciaDetalhe'
 
 export default function App() {
   return (
@@ -57,6 +60,9 @@ export default function App() {
             <Route path="/registros/novo" element={<NovaEntrada />} />
             <Route path="/registros/:id" element={<RegistroDetalhe />} />
             <Route path="/saida" element={<RegistrarSaida />} />
+            <Route path="/ocorrencias"        element={<Ocorrencias />} />
+            <Route path="/ocorrencias/nova"   element={<NovaOcorrencia />} />
+            <Route path="/ocorrencias/:id"    element={<OcorrenciaDetalhe />} />
 
             <Route
               path="/admin/relatorios"

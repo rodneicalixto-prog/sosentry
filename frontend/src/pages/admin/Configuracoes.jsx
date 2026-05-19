@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import {
   Settings, MessageCircle, QrCode, RefreshCw, LogOut, Send,
   Bell, Plus, Pencil, Trash2, Check, X, ToggleLeft, ToggleRight,
-  DoorOpen, ShieldCheck, UserX, UserCheck,
+  DoorOpen, ShieldCheck, UserX, UserCheck, Users,
 } from 'lucide-react'
 import api from '../../api/client'
 import { useAuth } from '../../contexts/AuthContext'
@@ -599,13 +599,260 @@ function AbaSuperadmin() {
   )
 }
 
+// ─── Aba Contatos de Notificação ─────────────────────────────────────────────
+
+const GRUPOS_EVENTOS = [
+  {
+    grupo: 'Portaria',
+    eventos: [
+      { key: 'portaria:entrada', label: 'Entrada de veículos / pedestres' },
+      { key: 'portaria:saida',   label: 'Saída de veículos / pedestres' },
+    ],
+  },
+  {
+    grupo: 'Ocorrências',
+    eventos: [
+      { key: 'ocorrencia:Segurança do Trabalho',    label: 'Segurança do Trabalho' },
+      { key: 'ocorrencia:Segurança Patrimonial',    label: 'Segurança Patrimonial' },
+      { key: 'ocorrencia:Conflitos Internos',       label: 'Conflitos Internos' },
+      { key: 'ocorrencia:Veículos e Estacionamento',label: 'Veículos e Estacionamento' },
+      { key: 'ocorrencia:Infraestrutura',           label: 'Infraestrutura' },
+      { key: 'ocorrencia:Ocorrências Externas',     label: 'Ocorrências Externas' },
+      { key: 'ocorrencia:Danos ao Patrimônio',      label: 'Danos ao Patrimônio' },
+      { key: 'ocorrencia:Saúde / Mal-estar',        label: 'Saúde / Mal-estar' },
+      { key: 'ocorrencia:Outras Ocorrências',       label: 'Outras Ocorrências' },
+    ],
+  },
+]
+
+const EVENTO_LABELS = {}
+GRUPOS_EVENTOS.forEach(g => g.eventos.forEach(e => { EVENTO_LABELS[e.key] = `${g.grupo}: ${e.label}` }))
+
+function ContatoModal({ contato, onSave, onClose }) {
+  const [nome, setNome]         = useState(contato?.nome     || '')
+  const [telefone, setTelefone] = useState(contato?.telefone || '')
+  const [eventos, setEventos]   = useState(new Set(contato?.eventos || []))
+  const [salvando, setSalvando] = useState(false)
+  const [erro, setErro]         = useState('')
+
+  function toggleEvento(key) {
+    setEventos(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
+  function toggleGrupo(grupo) {
+    const keys = grupo.eventos.map(e => e.key)
+    const todos = keys.every(k => eventos.has(k))
+    setEventos(prev => {
+      const next = new Set(prev)
+      keys.forEach(k => todos ? next.delete(k) : next.add(k))
+      return next
+    })
+  }
+
+  async function salvar() {
+    if (!nome.trim())     return setErro('Nome obrigatório')
+    if (!telefone.trim()) return setErro('Telefone obrigatório')
+    if (eventos.size === 0) return setErro('Selecione ao menos um evento')
+    setSalvando(true); setErro('')
+    try {
+      const payload = { nome, telefone, eventos: [...eventos], ativo: contato?.ativo ?? true }
+      if (contato?.id) {
+        await api.patch(`/api/contatos-notificacao/${contato.id}`, payload)
+      } else {
+        await api.post('/api/contatos-notificacao', payload)
+      }
+      onSave()
+    } catch (e) {
+      setErro(e.response?.data?.error || 'Erro ao salvar.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <h3 className="text-lg font-semibold text-gray-900">{contato?.id ? 'Editar contato' : 'Novo contato'}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {erro && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">{erro}</div>}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nome / Setor <span className="text-red-500">*</span></label>
+            <input className={input} placeholder="Ex: Segurança, RH, Manutenção..." value={nome} onChange={e => setNome(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp <span className="text-red-500">*</span></label>
+            <input className={input} placeholder="5511999999999 (com DDI, só números)" value={telefone} onChange={e => setTelefone(e.target.value)} />
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-3">Mensagens que este contato receberá <span className="text-red-500">*</span></p>
+            <div className="space-y-4">
+              {GRUPOS_EVENTOS.map(g => {
+                const todos = g.eventos.every(e => eventos.has(e.key))
+                const algum = g.eventos.some(e => eventos.has(e.key))
+                return (
+                  <div key={g.grupo} className="border border-gray-200 rounded-xl overflow-hidden">
+                    <button type="button" onClick={() => toggleGrupo(g)}
+                      className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm font-semibold transition-colors ${todos ? 'bg-blue-600 text-white' : algum ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}>
+                      <span>{g.grupo}</span>
+                      <span className="text-xs font-normal">{todos ? 'Todos selecionados' : algum ? 'Parcialmente' : 'Nenhum'}</span>
+                    </button>
+                    <div className="divide-y divide-gray-100">
+                      {g.eventos.map(e => (
+                        <label key={e.key} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50">
+                          <input type="checkbox" className="w-4 h-4 accent-blue-600 flex-shrink-0"
+                            checked={eventos.has(e.key)} onChange={() => toggleEvento(e.key)} />
+                          <span className="text-sm text-gray-700">{e.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 justify-end p-5 border-t border-gray-100">
+          <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Cancelar</button>
+          <button onClick={salvar} disabled={salvando}
+            className="flex items-center gap-2 px-5 py-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white rounded-lg text-sm font-semibold">
+            <Check className="w-4 h-4" />{salvando ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AbaContatos() {
+  const [contatos, setContatos]   = useState([])
+  const [carregando, setCarregando] = useState(true)
+  const [modal, setModal]         = useState(null) // null | {} | {id,...}
+  const [fb, setFb]               = useState(null)
+
+  useEffect(() => { carregar() }, [])
+  useEffect(() => { if (!fb) return; const t = setTimeout(() => setFb(null), 3500); return () => clearTimeout(t) }, [fb])
+
+  async function carregar() {
+    setCarregando(true)
+    try { const { data } = await api.get('/api/contatos-notificacao'); setContatos(data) }
+    catch { setFb({ tipo: 'erro', msg: 'Erro ao carregar contatos.' }) }
+    finally { setCarregando(false) }
+  }
+
+  async function toggleAtivo(c) {
+    try {
+      await api.patch(`/api/contatos-notificacao/${c.id}`, { ativo: !c.ativo })
+      setContatos(cs => cs.map(x => x.id === c.id ? { ...x, ativo: !x.ativo } : x))
+    } catch { setFb({ tipo: 'erro', msg: 'Erro ao alterar status.' }) }
+  }
+
+  async function excluir(c) {
+    if (!confirm(`Excluir contato "${c.nome}"?`)) return
+    try {
+      await api.delete(`/api/contatos-notificacao/${c.id}`)
+      setContatos(cs => cs.filter(x => x.id !== c.id))
+      setFb({ tipo: 'ok', msg: 'Contato removido.' })
+    } catch { setFb({ tipo: 'erro', msg: 'Erro ao excluir.' }) }
+  }
+
+  function onSave() {
+    setModal(null)
+    setFb({ tipo: 'ok', msg: 'Contato salvo com sucesso!' })
+    carregar()
+  }
+
+  return (
+    <div className="space-y-4">
+      {modal !== null && <ContatoModal contato={modal} onSave={onSave} onClose={() => setModal(null)} />}
+
+      <div className="card p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="font-semibold text-gray-800">Contatos de Notificação</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Cada contato recebe apenas as mensagens das categorias selecionadas.</p>
+          </div>
+          <button onClick={() => setModal({})}
+            className="flex items-center gap-2 px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-sm font-medium">
+            <Plus className="w-4 h-4" /> Novo
+          </button>
+        </div>
+
+        <Feedback fb={fb} />
+
+        {carregando ? (
+          <div className="py-8 flex justify-center"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
+        ) : contatos.length === 0 ? (
+          <div className="text-center py-10 text-gray-400 text-sm">
+            <Users className="w-10 h-10 mx-auto mb-2 text-gray-200" />
+            Nenhum contato cadastrado.<br />Adicione o primeiro contato para começar a receber notificações.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {contatos.map(c => (
+              <div key={c.id} className={`border rounded-xl p-4 ${c.ativo ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50 opacity-60'}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-gray-800 text-sm">{c.nome}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {c.ativo ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">{c.telefone}</p>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {(c.eventos || []).map(ev => (
+                        <span key={ev} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 rounded-full px-2 py-0.5">
+                          {ev.replace('portaria:', '').replace('ocorrencia:', '')}
+                        </span>
+                      ))}
+                      {(!c.eventos || c.eventos.length === 0) && (
+                        <span className="text-xs text-gray-400 italic">Sem eventos configurados</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => toggleAtivo(c)} title={c.ativo ? 'Desativar' : 'Ativar'}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50">
+                      {c.ativo ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5" />}
+                    </button>
+                    <button onClick={() => setModal(c)} title="Editar"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => excluir(c)} title="Excluir"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 const ABAS_BASE = [
-  { id: 'api',       label: 'Configuração da API',    icon: Settings },
-  { id: 'conexao',   label: 'Conexão / QR Code',      icon: MessageCircle },
-  { id: 'setores',   label: 'Notificações por Setor', icon: Bell },
-  { id: 'portarias', label: 'Portarias',               icon: DoorOpen },
+  { id: 'api',       label: 'Configuração da API',       icon: Settings },
+  { id: 'conexao',   label: 'Conexão / QR Code',         icon: MessageCircle },
+  { id: 'contatos',  label: 'Contatos de Notificação',   icon: Users },
+  { id: 'setores',   label: 'Notificações por Setor',    icon: Bell },
+  { id: 'portarias', label: 'Portarias',                  icon: DoorOpen },
 ]
 
 const ABA_SUPERADMIN = { id: 'superadmin', label: 'Superadmin', icon: ShieldCheck }
@@ -638,6 +885,7 @@ export default function Configuracoes() {
 
       {aba === 'api'        && <AbaConexaoAPI />}
       {aba === 'conexao'    && <AbaConexaoQR />}
+      {aba === 'contatos'   && <AbaContatos />}
       {aba === 'setores'    && <AbaSetores />}
       {aba === 'portarias'  && <AbaPortarias />}
       {aba === 'superadmin' && user?.role === 'superadmin' && <AbaSuperadmin />}
