@@ -4,6 +4,30 @@ const evo = require('../services/evolution.service');
 const webhookSvc = require('../services/webhook.service');
 const sseSvc = require('../services/sse.service');
 
+async function dispararSetores(evento, reg) {
+  try {
+    const setores = await prisma.notificacaoSetor.findMany({ where: { ativo: true } });
+    for (const s of setores) {
+      if (!s.eventos.includes(evento)) continue;
+      let match = false;
+      const val = (reg[s.criterioTipo] || '').toString().toLowerCase();
+      if (s.criterioValor === '*') {
+        match = true;
+      } else if (s.criterioTipo === 'tipoPortaria') {
+        match = (reg.portaria?.tipo || '').toLowerCase() === s.criterioValor;
+      } else {
+        match = val === s.criterioValor;
+      }
+      if (match) {
+        evo.enviarSetor(s.telefone, s.nome, evento, reg)
+          .catch(e => console.error(`[evo] setor ${s.nome}: ${e.message}`));
+      }
+    }
+  } catch (e) {
+    console.error('[setores] erro ao disparar notificações:', e.message);
+  }
+}
+
 function gerarProtocolo(num) {
   const now = new Date(), pad = n => String(n).padStart(2,'0');
   return `PRT${num}-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${Math.floor(Math.random()*9000)+1000}`;
@@ -104,6 +128,7 @@ exports.criar = async (req, res, next) => {
     }
 
     evo.enviarEntrada(registro).catch(e => console.error('Evo erro:', e.message));
+    dispararSetores('entrada', registro);
     webhookSvc.disparar('entrada', registro).catch(e => console.error('Webhook entrada erro:', e.message));
     sseSvc.broadcast('entrada', {
       protocolo: registro.protocolo, placa: registro.placa, nomeMotorista: registro.nomeMotorista,
@@ -177,6 +202,7 @@ exports.saida = async (req, res, next) => {
     }
 
     evo.enviarSaida(updated).catch(e => console.error('Evo saída erro:', e.message));
+    dispararSetores('saida', updated);
     webhookSvc.disparar('saida', updated).catch(e => console.error('Webhook saída erro:', e.message));
     sseSvc.broadcast('saida', {
       protocolo, placa: updated.placa, nomeMotorista: updated.nomeMotorista,

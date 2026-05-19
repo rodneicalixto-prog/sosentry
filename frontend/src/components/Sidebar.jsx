@@ -7,7 +7,7 @@ import {
   LogOut as LogOutIcon,
   Users,
   Webhook,
-  MessageCircle,
+  Settings,
   LogOut,
   X,
   ShieldCheck,
@@ -23,10 +23,10 @@ const NAV = [
 ]
 
 const ADMIN_NAV = [
-  { to: '/admin/relatorios', label: 'Relatórios', icon: BarChart2, minRole: 'admin' },
-  { to: '/admin/usuarios',   label: 'Usuários',   icon: Users,       minRole: 'admin' },
-  { to: '/admin/webhooks',   label: 'Webhooks',   icon: Webhook,     minRole: 'admin' },
-  { to: '/admin/whatsapp',   label: 'WhatsApp',   icon: MessageCircle, minRole: 'admin' },
+  { to: '/admin/relatorios',    label: 'Relatórios',    icon: BarChart2, minRole: 'admin' },
+  { to: '/admin/usuarios',      label: 'Usuários',      icon: Users,     minRole: 'admin' },
+  { to: '/admin/webhooks',      label: 'Webhooks',      icon: Webhook,   minRole: 'admin' },
+  { to: '/admin/configuracoes', label: 'Configurações', icon: Settings,  minRole: 'admin' },
 ]
 
 export default function Sidebar({ open, onClose }) {

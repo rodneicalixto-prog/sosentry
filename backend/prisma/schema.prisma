@@ -137,3 +137,24 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+model Configuracao {
+  id        String   @id @default(uuid())
+  chave     String   @unique
+  valor     String?
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("configuracoes")
+}
+
+model NotificacaoSetor {
+  id            String   @id @default(uuid())
+  nome          String
+  telefone      String
+  criterioTipo  String   @map("criterio_tipo")
+  criterioValor String   @map("criterio_valor")
+  eventos       String[]
+  ativo         Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  @@map("notificacoes_setor")
+}

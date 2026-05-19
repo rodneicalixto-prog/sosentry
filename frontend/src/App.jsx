@@ -14,10 +14,10 @@ import Dashboard from './pages/Dashboard'
 import Registros from './pages/Registros'
 import NovaEntrada from './pages/NovaEntrada'
 import RegistroDetalhe from './pages/RegistroDetalhe'
-import Usuarios   from './pages/admin/Usuarios'
-import Webhooks   from './pages/admin/Webhooks'
-import Whatsapp   from './pages/admin/Whatsapp'
-import Relatorios from './pages/admin/Relatorios'
+import Usuarios      from './pages/admin/Usuarios'
+import Webhooks      from './pages/admin/Webhooks'
+import Relatorios    from './pages/admin/Relatorios'
+import Configuracoes from './pages/admin/Configuracoes'
 import RegistrarSaida from './pages/RegistrarSaida'
 
 export default function App() {
@@ -83,10 +83,10 @@ export default function App() {
               }
             />
             <Route
-              path="/admin/whatsapp"
+              path="/admin/configuracoes"
               element={
                 <ProtectedRoute minRole="admin">
-                  <Whatsapp />
+                  <Configuracoes />
                 </ProtectedRoute>
               }
             />
