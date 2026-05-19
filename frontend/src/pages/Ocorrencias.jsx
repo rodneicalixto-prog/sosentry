@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, AlertTriangle, Filter, ChevronRight, RefreshCw } from 'lucide-react'
+import { Plus, Search, AlertTriangle, Filter, ChevronRight, RefreshCw, Download } from 'lucide-react'
 import api from '../api/client'
 
 const STATUS_MAP = {
@@ -32,6 +32,7 @@ export default function Ocorrencias() {
   const [status, setStatus]   = useState('')
   const [categoria, setCategoria] = useState('')
   const [filtrosAbertos, setFiltrosAbertos] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const LIMIT = 20
 
   const carregar = useCallback(async (p = 1) => {
@@ -56,6 +57,27 @@ export default function Ocorrencias() {
 
   const totalPages = Math.ceil(total / LIMIT)
 
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const params = {}
+      if (busca.trim()) params.busca = busca.trim()
+      if (status)    params.status    = status
+      if (categoria) params.categoria = categoria
+      const { data } = await api.get('/api/ocorrencias/exportar', { params, responseType: 'blob' })
+      const url  = URL.createObjectURL(new Blob([data], { type: 'text/csv;charset=utf-8;' }))
+      const link = document.createElement('a')
+      link.href  = url
+      link.download = `ocorrencias_${new Date().toISOString().slice(0, 10)}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Erro ao exportar. Tente novamente.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
@@ -64,10 +86,21 @@ export default function Ocorrencias() {
           <h1 className="text-2xl font-bold text-gray-900">Ocorrências</h1>
           <p className="text-sm text-gray-400 mt-0.5">{total} ocorrência(s) registrada(s)</p>
         </div>
-        <button onClick={() => navigate('/ocorrencias/nova')}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-sm font-semibold flex-shrink-0">
-          <Plus className="w-4 h-4" /> Nova Ocorrência
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={handleExport}
+            disabled={exporting || total === 0}
+            className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+            title="Exportar ocorrências filtradas em CSV"
+          >
+            <Download className={`w-4 h-4 ${exporting ? 'animate-bounce' : ''}`} />
+            <span className="hidden sm:inline">{exporting ? 'Exportando…' : 'CSV'}</span>
+          </button>
+          <button onClick={() => navigate('/ocorrencias/nova')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-sm font-semibold">
+            <Plus className="w-4 h-4" /> Nova Ocorrência
+          </button>
+        </div>
       </div>
 
       {/* Filtros */}
