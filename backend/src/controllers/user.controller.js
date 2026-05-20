@@ -43,7 +43,10 @@ exports.criar = async (req, res, next) => {
       telefone: telefone||null, createdBy: req.user.id
     }, select: SELECT_FIELDS });
     res.status(201).json(user);
-  } catch(e){ next(e); }
+  } catch(e) {
+    if (e.code === 'P2002') return res.status(409).json({ error: 'Login ou e-mail já em uso' });
+    next(e);
+  }
 };
 
 exports.atualizar = async (req, res, next) => {
@@ -89,6 +92,8 @@ exports.desativar = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (id === req.user.id) return res.status(400).json({ error: 'Não pode desativar a própria conta' });
+    const alvo = await prisma.user.findUnique({ where: { id }, select: { id: true } });
+    if (!alvo) return res.status(404).json({ error: 'Usuário não encontrado' });
     await prisma.user.update({ where:{ id }, data:{ ativo: false } });
     await prisma.session.deleteMany({ where:{ userId: id } });
     res.json({ ok: true });
@@ -105,9 +110,13 @@ exports.resetSenha = async (req, res, next) => {
 
     const user = await prisma.user.findUnique({
       where: { id },
-      select: { id: true, nome: true, login: true, telefone: true, ativo: true },
+      select: { id: true, nome: true, login: true, role: true, telefone: true, ativo: true },
     });
     if (!user || !user.ativo) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+    // Não permite resetar senha de perfil igual ou superior ao do solicitante
+    if (HIER.indexOf(user.role) >= HIER.indexOf(req.user.role))
+      return res.status(403).json({ error: 'Sem permissão para redefinir senha deste perfil' });
 
     if (modo === 'whatsapp') {
       if (!user.telefone)

@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { disparar } = require('../services/webhook.service');
 
 const EVENTOS_VALIDOS = ['entrada', 'saida', 'cancelado'];
 

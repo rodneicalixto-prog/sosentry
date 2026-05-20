@@ -7,6 +7,9 @@ const rateLimit  = require('express-rate-limit');
 const prisma = require('./lib/prisma');
 const app = express();
 
+// Necessário para req.ip ser o IP real do cliente (Traefik → Nginx → Express)
+app.set('trust proxy', 1);
+
 // Limpa sessões expiradas a cada 6 horas
 setInterval(async () => {
   try {
@@ -27,7 +30,11 @@ app.use(helmet({
   }
 }));
 const corsOrigins = (process.env.FRONTEND_URL || '').split(/[,;]/).map(s => s.trim().replace(/\/$/, '')).filter(s => s.startsWith('http'))
-app.use(cors({ origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins.length > 1 ? corsOrigins : true, credentials: true }));
+if (!corsOrigins.length) {
+  console.error('[FATAL] FRONTEND_URL não configurado ou inválido. Configure a variável de ambiente e reinicie.');
+  process.exit(1);
+}
+app.use(cors({ origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins, credentials: true }));
 // Morgan sem expor o token JWT passado via ?token= (SSE)
 app.use(morgan((tokens, req, res) => {
   try {
@@ -39,9 +46,12 @@ app.use(morgan((tokens, req, res) => {
   }
 }));
 app.use(express.json({ limit: '1mb' }));
-app.use(rateLimit({ windowMs: 15*60*1000, max: 300 }));
-app.use('/api/auth/login', rateLimit({ windowMs: 15*60*1000, max: 5 }));
-app.use('/api/registros', rateLimit({ windowMs: 60*60*1000, max: 200, skip: (req) => req.method !== 'POST' }));
+app.use(rateLimit({ windowMs: 15*60*1000, max: 300, standardHeaders: true, legacyHeaders: false }));
+// Login: 5 tentativas por IP por 15 minutos — efetivo agora que trust proxy está configurado
+app.use('/api/auth/login', rateLimit({ windowMs: 15*60*1000, max: 5, standardHeaders: true, legacyHeaders: false }));
+// Forgot-password: 3 por IP por hora
+app.use('/api/auth/forgot-password', rateLimit({ windowMs: 60*60*1000, max: 3, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/registros', rateLimit({ windowMs: 60*60*1000, max: 200, skip: (req) => req.method !== 'POST', standardHeaders: true, legacyHeaders: false }));
 
 // Proteção CSRF: rejeita requisições de origens não autorizadas
 app.use((req, res, next) => {
@@ -78,8 +88,9 @@ app.get('/health', async (_, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`
     res.json({ ok: true, app: 'SOS Entry', db: 'ok', ts: new Date() })
-  } catch (e) {
-    res.status(503).json({ ok: false, app: 'SOS Entry', db: 'error', error: e.message })
+  } catch {
+    // Não expõe e.message para evitar vazamento de informações do banco
+    res.status(503).json({ ok: false, app: 'SOS Entry', db: 'error' })
   }
 });
 
@@ -96,10 +107,7 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: message });
 });
 
-// Garante que o valor 'na_fila' existe no enum StatusRegistro antes de aceitar conexões
-prisma.$executeRaw`ALTER TYPE "StatusRegistro" ADD VALUE IF NOT EXISTS 'na_fila'`
-  .then(() => console.log('[startup] enum na_fila: ok'))
-  .catch(e => console.warn('[startup] enum na_fila (ignorado):', e.message));
+// Nota: valores de enum são gerenciados exclusivamente via migrations Prisma.
 
 const server = app.listen(process.env.PORT || 3001, () =>
   console.log(`SOS Entry API rodando na porta ${process.env.PORT || 3001}`)

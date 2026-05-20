@@ -129,7 +129,7 @@ exports.resetPassword = async (req, res, next) => {
   try {
     const { token, novaSenha } = req.body;
     if (!token || !novaSenha) return res.status(400).json({ error: 'Token e nova senha obrigatórios' });
-    if (novaSenha.length < 6) return res.status(400).json({ error: 'A senha deve ter no mínimo 6 caracteres' });
+    if (novaSenha.length < 8) return res.status(400).json({ error: 'A senha deve ter no mínimo 8 caracteres' });
 
     const user = await prisma.user.findUnique({ where: { resetToken: token } });
 

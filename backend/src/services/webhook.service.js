@@ -1,17 +1,43 @@
+const crypto = require('crypto');
+const http   = require('http');
+const https  = require('https');
 const prisma = require('../lib/prisma');
 
 // IPs/hostnames internos bloqueados para prevenir SSRF
-const BLOQUEADOS = ['127.0.0.1', 'localhost', '0.0.0.0', '::1', '::ffff:127.0.0.1']
+const BLOQUEADOS = [
+  '127.0.0.1', 'localhost', '0.0.0.0', '::1', '::ffff:127.0.0.1',
+  '169.254.169.254', // AWS/GCP/Azure metadata service
+]
 
 function validarUrl(url) {
   let parsed
   try { parsed = new URL(url) } catch { throw new Error('URL inválida') }
   if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Protocolo não permitido')
-  if (BLOQUEADOS.includes(parsed.hostname)) throw new Error('URL aponta para rede interna')
-  // Bloqueia intervalos de IP privado por prefixo
+
   const h = parsed.hostname
-  if (/^10\./.test(h) || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h))
+
+  // Bloqueia hostnames explícitos
+  if (BLOQUEADOS.includes(h.toLowerCase())) throw new Error('URL aponta para rede interna')
+
+  // Bloqueia endereços IPv6 internos/loopback
+  if (h.startsWith('[')) {
+    const ipv6 = h.slice(1, -1).toLowerCase()
+    if (ipv6 === '::1' || ipv6.startsWith('::ffff:127.') || ipv6.startsWith('fe80:') ||
+        ipv6.startsWith('fc') || ipv6.startsWith('fd'))
+      throw new Error('URL aponta para rede interna (IPv6)')
+  }
+
+  // Bloqueia encodings alternativos de IPs privados (decimal, hex, octal)
+  // Tenta resolver como número inteiro — ex: 2130706433 = 127.0.0.1
+  if (/^\d+$/.test(h) || /^0x[\da-f]+$/i.test(h) || /^0\d+$/.test(h)) {
+    throw new Error('URL com IP em formato alternativo não permitida')
+  }
+
+  // Bloqueia intervalos de IP privado por prefixo
+  if (/^10\./.test(h) || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
+      /^127\./.test(h) || /^169\.254\./.test(h) || /^0\.0\.0\./.test(h))
     throw new Error('URL aponta para rede privada')
+
   return parsed
 }
 

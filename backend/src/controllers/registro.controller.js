@@ -1,9 +1,11 @@
+const { randomInt } = require('crypto');
 const prisma = require('../lib/prisma');
 const evo = require('../services/evolution.service');
 const webhookSvc = require('../services/webhook.service');
 const sseSvc = require('../services/sse.service');
 const notifSvc = require('../services/notificacao.service');
 
+// Retorna Promise para que erros sejam propagáveis via .catch()
 async function dispararSetores(evento, reg) {
   try {
     const numerosNotificados = new Set();
@@ -48,7 +50,7 @@ async function dispararSetores(evento, reg) {
 
 function gerarProtocolo(num) {
   const now = new Date(), pad = n => String(n).padStart(2,'0');
-  return `PRT${num}-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${Math.floor(Math.random()*9000)+1000}`;
+  return `PRT${num}-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${randomInt(100000, 999999)}`;
 }
 
 function validarCPF(cpf) {
@@ -112,9 +114,17 @@ exports.criar = async (req, res, next) => {
     }
 
     // dataEntrada: usa o valor enviado (forçando UTC) ou o momento atual
-    const dtEntrada = d.dataEntrada
-      ? new Date(`${d.dataEntrada}T${d.horaEntrada||'00:00'}:00Z`)
-      : new Date()
+    let dtEntrada = new Date()
+    if (d.dataEntrada) {
+      dtEntrada = new Date(`${d.dataEntrada}T${d.horaEntrada||'00:00'}:00Z`)
+      if (isNaN(dtEntrada)) return res.status(400).json({ error: 'Data/hora inválida' })
+      // Não aceita datas mais de 24h no futuro ou mais de 30 dias no passado
+      const agora = Date.now()
+      if (dtEntrada.getTime() > agora + 24*60*60*1000)
+        return res.status(400).json({ error: 'Data de entrada não pode ser mais de 24h no futuro' })
+      if (dtEntrada.getTime() < agora - 30*24*60*60*1000)
+        return res.status(400).json({ error: 'Data de entrada não pode ser mais de 30 dias no passado' })
+    }
     const dados = {
       portariaId: d.portariaId, operadorEntradaId: req.user.id,
       nomeMotorista: nome, cpfMotorista: cpf, telefoneMotorista: telefone||null,
@@ -146,10 +156,11 @@ exports.criar = async (req, res, next) => {
       }
     }
 
-    evo.enviarEntrada(registro).catch(e => console.error('Evo erro:', e.message));
-    dispararSetores('entrada', registro);
-    notifSvc.portariaEntrada(registro);
-    webhookSvc.disparar('entrada', registro).catch(e => console.error('Webhook entrada erro:', e.message));
+    // Side effects assíncronos — não bloqueiam a resposta
+    evo.enviarEntrada(registro).catch(e => console.error('[evo] entrada:', e.message));
+    dispararSetores('entrada', registro).catch(e => console.error('[setores] entrada:', e.message));
+    notifSvc.portariaEntrada(registro).catch(e => console.error('[notif] portariaEntrada:', e.message));
+    webhookSvc.disparar('entrada', registro).catch(e => console.error('[webhook] entrada:', e.message));
     sseSvc.broadcast('entrada', {
       protocolo: registro.protocolo, placa: registro.placa, nomeMotorista: registro.nomeMotorista,
       empresa: registro.empresa, portaria: registro.portaria?.nome,
@@ -229,10 +240,10 @@ exports.saida = async (req, res, next) => {
       throw e
     }
 
-    evo.enviarSaida(updated).catch(e => console.error('Evo saída erro:', e.message));
-    dispararSetores('saida', updated);
-    notifSvc.portariaSaida(updated);
-    webhookSvc.disparar('saida', updated).catch(e => console.error('Webhook saída erro:', e.message));
+    evo.enviarSaida(updated).catch(e => console.error('[evo] saída:', e.message));
+    dispararSetores('saida', updated).catch(e => console.error('[setores] saída:', e.message));
+    notifSvc.portariaSaida(updated).catch(e => console.error('[notif] portariaSaida:', e.message));
+    webhookSvc.disparar('saida', updated).catch(e => console.error('[webhook] saída:', e.message));
     sseSvc.broadcast('saida', {
       protocolo, placa: updated.placa, nomeMotorista: updated.nomeMotorista,
       empresa: updated.empresa, lacreImageUrl: updated.lacreImageUrl, operador: req.user.nome
@@ -353,6 +364,12 @@ exports.exportar = async (req, res, next) => {
 
     const csv = '﻿' + [header.join(','), ...rows].join('\r\n');
     const filename = `registros_${new Date().toISOString().slice(0,10)}.csv`;
+
+    prisma.auditLog.create({ data: {
+      userId: req.user.id, acao: 'EXPORTAR_REGISTROS', entidade: 'registros',
+      detalhes: { total: registros.length, filtros: { status, busca, dataInicio, dataFim } }, ip: req.ip,
+    }}).catch(e => console.warn('[audit] export:', e.message));
+
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(csv);
