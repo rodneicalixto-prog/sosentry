@@ -31,10 +31,9 @@ app.use(helmet({
 }));
 const corsOrigins = (process.env.FRONTEND_URL || '').split(/[,;]/).map(s => s.trim().replace(/\/$/, '')).filter(s => s.startsWith('http'))
 if (!corsOrigins.length) {
-  console.error('[FATAL] FRONTEND_URL não configurado ou inválido. Configure a variável de ambiente e reinicie.');
-  process.exit(1);
+  console.warn('[aviso] FRONTEND_URL não configurado — CORS aceitará qualquer origem. Configure a variável em produção.');
 }
-app.use(cors({ origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins, credentials: true }));
+app.use(cors({ origin: corsOrigins.length ? (corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins) : true, credentials: true }));
 // Morgan sem expor o token JWT passado via ?token= (SSE)
 app.use(morgan((tokens, req, res) => {
   try {
