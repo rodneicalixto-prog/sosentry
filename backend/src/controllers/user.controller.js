@@ -126,7 +126,7 @@ exports.resetSenha = async (req, res, next) => {
       const expiry = new Date(Date.now() + 60 * 60 * 1000);
       await prisma.user.update({ where: { id }, data: { resetToken: token, resetTokenExpiry: expiry } });
 
-      const frontendUrl = (process.env.FRONTEND_URL || '').split(',')[0].trim().replace(/\/$/, '');
+      const frontendUrl = (process.env.FRONTEND_URL || '').split(/[,;]/)[0].trim().replace(/\/$/, '');
       const link = `${frontendUrl}/redefinir-senha?token=${token}`;
       const msg =
         `🔐 *SOS Entry — Redefinição de senha*\n\n` +

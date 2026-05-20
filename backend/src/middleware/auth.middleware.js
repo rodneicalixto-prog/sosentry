@@ -20,7 +20,12 @@ async function authenticate(req, res, next) {
     if (!user || !user.ativo) return res.status(401).json({ error: 'Usuário inativo' });
     req.user = user;
     next();
-  } catch { return res.status(401).json({ error: 'Token inválido' }); }
+  } catch (e) {
+    if (e.name !== 'JsonWebTokenError' && e.name !== 'TokenExpiredError' && e.name !== 'NotBeforeError') {
+      console.error('[auth] erro inesperado:', e.message);
+    }
+    return res.status(401).json({ error: 'Token inválido' });
+  }
 }
 
 function requireRole(...roles) {

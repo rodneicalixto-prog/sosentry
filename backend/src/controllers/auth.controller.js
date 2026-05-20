@@ -91,7 +91,7 @@ exports.forgotPassword = async (req, res, next) => {
       data: { userId: user.id, acao: 'RESET_SENHA_SOLICITADO', entidade: 'users', entidadeId: user.id, ip: req.ip }
     });
 
-    const frontendUrl = (process.env.FRONTEND_URL || '').split(',')[0].trim().replace(/\/$/, '');
+    const frontendUrl = (process.env.FRONTEND_URL || '').split(/[,;]/)[0].trim().replace(/\/$/, '');
     const link = `${frontendUrl}/redefinir-senha?token=${token}`;
     const agora = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 

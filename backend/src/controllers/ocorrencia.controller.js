@@ -105,8 +105,8 @@ exports.criar = async (req, res, next) => {
       detalhes: { protocolo: ocorrencia.protocolo, categoria: ocorrencia.categoria }
     }}).catch(e => console.warn('[audit]', e.message));
 
-    notificarOcorrencia(ocorrencia);        // responsável geral + recebeWhatsapp
-    notifSvc.ocorrencia(ocorrencia);        // contatos configurados por categoria
+    notificarOcorrencia(ocorrencia).catch(e => console.error('[notif] ocorrência:', e.message));
+    notifSvc.ocorrencia(ocorrencia).catch(e => console.error('[notif] ocorrência setor:', e.message));
 
     res.status(201).json(ocorrencia);
   } catch(e) { next(e); }

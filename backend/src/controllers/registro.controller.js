@@ -5,6 +5,9 @@ const webhookSvc = require('../services/webhook.service');
 const sseSvc = require('../services/sse.service');
 const notifSvc = require('../services/notificacao.service');
 
+const SUPABASE_PROJECT_REF = process.env.SUPABASE_PROJECT_REF || 'yshvniyhtnyhnjcecbft';
+const FOTO_PREFIX = `https://${SUPABASE_PROJECT_REF}.supabase.co/storage/v1/object/public/fotos-saida/`;
+
 // Retorna Promise para que erros sejam propagáveis via .catch()
 async function dispararSetores(evento, reg) {
   try {
@@ -206,7 +209,6 @@ exports.saida = async (req, res, next) => {
   try {
     const { protocolo } = req.params;
     const { lacreImageUrl, fotoCarroceriaUrl, obsOcorrencia, obsAnexos } = req.body || {};
-    const FOTO_PREFIX = 'https://yshvniyhtnyhnjcecbft.supabase.co/storage/v1/object/public/fotos-saida/';
     if (!lacreImageUrl)
       return res.status(400).json({ error: 'Foto do lacre obrigatória' })
     if (typeof lacreImageUrl !== 'string' || !lacreImageUrl.startsWith(FOTO_PREFIX))

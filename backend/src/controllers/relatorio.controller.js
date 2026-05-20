@@ -1,4 +1,16 @@
+const { Prisma } = require('@prisma/client');
 const prisma = require('../lib/prisma');
+
+function buildDateFilter(dataInicio, dataFim) {
+  if (!dataInicio && !dataFim) return null;
+  const inicio = dataInicio ? new Date(dataInicio + 'T00:00:00Z') : null;
+  const fim    = dataFim    ? new Date(dataFim    + 'T23:59:59Z') : null;
+  if ((inicio && isNaN(inicio)) || (fim && isNaN(fim))) return 'invalid';
+  const f = {};
+  if (inicio) f.gte = inicio;
+  if (fim)    f.lte = fim;
+  return f;
+}
 
 exports.visitas = async (req, res, next) => {
   try {
@@ -19,7 +31,6 @@ exports.visitas = async (req, res, next) => {
       ...(portariaId && { portariaId }),
     };
 
-    // Agrupa por empresa
     const porEmpresaRaw = await prisma.registro.groupBy({
       by: ['empresa'],
       where,
@@ -33,22 +44,28 @@ exports.visitas = async (req, res, next) => {
       total: r._count.id,
     }));
 
-    // Agrupa por mês (sempre retorna todos os meses do ano)
-    const porMesRaw = await prisma.registro.groupBy({
-      by: ['dataEntrada'],
-      where: {
-        dataEntrada: { gte: new Date(anoNum, 0, 1), lt: new Date(anoNum + 1, 0, 1) },
-        ...(empresa    && { empresa:    { contains: empresa,    mode: 'insensitive' } }),
-        ...(portariaId && { portariaId }),
-      },
-      _count: { id: true },
-    });
+    // Agrupa por mês via DATE_TRUNC — evita carregar todos os registros em memória
+    const anoInicio = new Date(anoNum, 0, 1);
+    const anoFim    = new Date(anoNum + 1, 0, 1);
+    const empresaClause    = empresa    ? Prisma.sql`AND empresa ILIKE ${'%' + empresa + '%'}` : Prisma.empty;
+    const portariaClause   = portariaId ? Prisma.sql`AND portaria_id = ${portariaId}::uuid`    : Prisma.empty;
 
-    // Agrupa manualmente por mês
+    const porMesRaw = await prisma.$queryRaw`
+      SELECT
+        EXTRACT(MONTH FROM data_entrada)::int AS mes,
+        COUNT(*)::int AS total
+      FROM registros
+      WHERE data_entrada >= ${anoInicio}
+        AND data_entrada <  ${anoFim}
+        ${empresaClause}
+        ${portariaClause}
+      GROUP BY EXTRACT(MONTH FROM data_entrada)
+      ORDER BY mes
+    `;
+
     const meses = Array.from({ length: 12 }, (_, i) => ({ mes: i + 1, total: 0 }));
     for (const r of porMesRaw) {
-      const m = new Date(r.dataEntrada).getMonth();
-      meses[m].total += r._count.id;
+      meses[r.mes - 1].total = Number(r.total);
     }
 
     const [total, portarias] = await Promise.all([
@@ -77,7 +94,6 @@ exports.resumo = async (req, res, next) => {
     const hoje = new Date()
     const todayStr = hoje.toISOString().slice(0, 10)
 
-    // Período selecionado (default = últimos 7 dias)
     const fimStr    = req.query.dataFim    || todayStr
     const inicioStr = req.query.dataInicio || (() => {
       const d = new Date(fimStr + 'T00:00:00Z')
@@ -85,13 +101,13 @@ exports.resumo = async (req, res, next) => {
       return d.toISOString().slice(0, 10)
     })()
 
+    const dtFilter = buildDateFilter(inicioStr, fimStr)
+    if (dtFilter === 'invalid')
+      return res.status(400).json({ error: 'Data inválida (use YYYY-MM-DD)' })
+
     const inicio = new Date(inicioStr + 'T00:00:00Z')
     const fim    = new Date(fimStr    + 'T23:59:59Z')
 
-    if (isNaN(inicio) || isNaN(fim))
-      return res.status(400).json({ error: 'Data inválida (use YYYY-MM-DD)' })
-
-    // Busca registros e ocorrências do período em paralelo
     const [registros, ocorrencias] = await Promise.all([
       prisma.registro.findMany({
         where: { dataEntrada: { gte: inicio, lte: fim } },
@@ -103,7 +119,6 @@ exports.resumo = async (req, res, next) => {
       }),
     ])
 
-    // Gera array de todos os dias do período
     const days = []
     const cur = new Date(inicio)
     while (cur <= fim) {
@@ -111,7 +126,6 @@ exports.resumo = async (req, res, next) => {
       cur.setUTCDate(cur.getUTCDate() + 1)
     }
 
-    // Mapa dia → contadores
     const serieMap = {}
     for (const d of days) {
       serieMap[d] = { data: d, visitas: 0, coletas: 0, entregas: 0, ocorrencias: 0 }
@@ -134,7 +148,6 @@ exports.resumo = async (req, res, next) => {
       dia: d.slice(8, 10) + '/' + d.slice(5, 7),
     }))
 
-    // Totais acumulados do período
     const totais = serie.reduce(
       (acc, d) => {
         acc.visitas    += d.visitas

@@ -110,8 +110,6 @@ model Registro {
   setorDestino      String?        @map("setor_destino")
   falarCom          String?        @map("falar_com")
   autorizadoPor     String?        @map("autorizado_por")
-  fotoUrl           String?        @map("foto_url")
-  fotoThumbUrl      String?        @map("foto_thumb_url")
   status            StatusRegistro @default(na_fila)
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
@@ -176,6 +174,7 @@ model AuditLog {
   @@index([userId])
   @@index([acao])
   @@index([createdAt])
+  @@index([entidadeId])
   @@map("audit_logs")
 }
 
@@ -226,5 +225,6 @@ model VideoUniversidade {
   updatedAt   DateTime @updatedAt @map("updated_at")
   criadoPorId String?  @map("criado_por_id")
   criadoPor   User?    @relation(fields: [criadoPorId], references: [id])
+  @@index([ativo, destaque, ordem])
   @@map("videos_universidade")
 }
