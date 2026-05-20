@@ -68,8 +68,13 @@ export function AuthProvider({ children }) {
     [user],
   )
 
+  const refreshToken = localStorage.getItem('refreshToken') || null
+
+  const clearTrocaSenhaObrigatoria = () =>
+    setUser(u => u ? { ...u, trocaSenhaObrigatoria: false } : u)
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, hasRole }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, hasRole, refreshToken, clearTrocaSenhaObrigatoria }}>
       {children}
     </AuthContext.Provider>
   )

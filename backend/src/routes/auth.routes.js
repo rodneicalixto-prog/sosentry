@@ -11,5 +11,6 @@ r.post('/logout',          authenticate, c.logout);
 r.get('/me',               authenticate, c.me);
 r.post('/forgot-password', forgotLimiter, c.forgotPassword);
 r.post('/reset-password',  c.resetPassword);
+r.patch('/minha-senha',    authenticate, c.minhaSenha);
 
 module.exports = r;

@@ -5,5 +5,6 @@ r.use(authenticate);
 r.get('/',       requireRole('admin'), c.listar);
 r.post('/',      requireRole('admin'), c.criar);
 r.patch('/:id',  requireRole('admin'), c.atualizar);
-r.delete('/:id', requireRole('admin'), c.desativar);
+r.delete('/:id',              requireRole('admin'), c.desativar);
+r.post('/:id/reset-senha',   requireRole('admin'), c.resetSenha);
 module.exports = r;
