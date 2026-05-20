@@ -611,10 +611,24 @@ function AbaSuperadmin() {
 
 const GRUPOS_EVENTOS = [
   {
-    grupo: 'Portaria',
+    grupo: 'Portaria 1 — Pedestres',
     eventos: [
-      { key: 'portaria:entrada', label: 'Entrada de veículos / pedestres' },
-      { key: 'portaria:saida',   label: 'Saída de veículos / pedestres' },
+      { key: 'portaria1:pedestre:entrada', label: 'Entrada de pedestres' },
+      { key: 'portaria1:pedestre:saida',   label: 'Saída de pedestres' },
+    ],
+  },
+  {
+    grupo: 'Portaria 2 — Veículos',
+    eventos: [
+      { key: 'portaria2:veiculo:entrada', label: 'Entrada de veículos' },
+      { key: 'portaria2:veiculo:saida',   label: 'Saída de veículos' },
+    ],
+  },
+  {
+    grupo: 'Portaria 2 — Pedestres',
+    eventos: [
+      { key: 'portaria2:pedestre:entrada', label: 'Entrada de pedestres' },
+      { key: 'portaria2:pedestre:saida',   label: 'Saída de pedestres' },
     ],
   },
   {

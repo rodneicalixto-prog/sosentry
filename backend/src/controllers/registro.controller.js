@@ -124,6 +124,7 @@ exports.criar = async (req, res, next) => {
       tipoOperacao: d.tipoOperacao, tipoMaterial: d.tipoMaterial||null,
       tipoEmbalagem: d.tipoEmbalagem||null, quantidade: d.quantidade ? Number(d.quantidade) : null,
       obsMaterial: d.obsMaterial||null, obsGeral: d.obsGeral||null,
+      obsAnexos: Array.isArray(d.obsAnexos) ? d.obsAnexos : [],
       temAjudante: !!d.temAjudante,
       ajudanteNome: ajNome, ajudanteCpf: ajCpf, ajudanteTelefone: ajTel, ajudanteRg: ajRg,
       setorDestino: d.setorDestino||null, falarCom: d.falarCom||null, autorizadoPor: d.autorizadoPor||null,
@@ -193,7 +194,7 @@ exports.autorizar = async (req, res, next) => {
 exports.saida = async (req, res, next) => {
   try {
     const { protocolo } = req.params;
-    const { lacreImageUrl, fotoCarroceriaUrl, obsOcorrencia } = req.body || {};
+    const { lacreImageUrl, fotoCarroceriaUrl, obsOcorrencia, obsAnexos } = req.body || {};
     const FOTO_PREFIX = 'https://yshvniyhtnyhnjcecbft.supabase.co/storage/v1/object/public/fotos-saida/';
     if (!lacreImageUrl)
       return res.status(400).json({ error: 'Foto do lacre obrigatória' })
@@ -218,6 +219,7 @@ exports.saida = async (req, res, next) => {
             ...(lacreImageUrl     && { lacreImageUrl }),
             ...(fotoCarroceriaUrl && { fotoCarroceriaUrl }),
             ...(obsOcorrencia     && { obsOcorrencia }),
+            ...(Array.isArray(obsAnexos) && { obsAnexos }),
           },
           include: { portaria: true, operadorEntrada: { select: { nome: true } }, operadorSaida: { select: { nome: true } } }
         })

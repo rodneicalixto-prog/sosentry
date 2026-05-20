@@ -4,6 +4,7 @@ import { ChevronLeft, LogOut, LogIn, AlertCircle, CheckCircle, AlertTriangle, X,
 import api from '../api/client'
 import StatusBadge from '../components/StatusBadge'
 import FotoUpload from '../components/FotoUpload'
+import AnexosInput from '../components/AnexosInput'
 
 function formatDateTime(iso) {
   if (!iso) return '—'
@@ -25,6 +26,7 @@ function SaidaModal({ registro, onSave, onCancel }) {
   const [lacreImageUrl, setLacreImageUrl] = useState(null)
   const [fotoCarroceriaUrl, setFotoCarroceriaUrl] = useState(null)
   const [obsOcorrencia, setObsOcorrencia] = useState('')
+  const [obsAnexos, setObsAnexos] = useState([])
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
 
@@ -44,7 +46,7 @@ function SaidaModal({ registro, onSave, onCancel }) {
     setSalvando(true); setErro('')
     try {
       const { data } = await api.patch(`/api/registros/${registro.protocolo}/saida`, {
-        lacreImageUrl, fotoCarroceriaUrl, obsOcorrencia,
+        lacreImageUrl, fotoCarroceriaUrl, obsOcorrencia, obsAnexos,
       })
       onSave(data)
     } catch (err) {
@@ -109,6 +111,11 @@ function SaidaModal({ registro, onSave, onCancel }) {
               value={obsOcorrencia}
               onChange={e => setObsOcorrencia(e.target.value)}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fotos e Arquivos</label>
+            <AnexosInput value={obsAnexos} onChange={setObsAnexos} disabled={salvando} />
           </div>
 
           <div className="flex gap-3 justify-end pt-1">

@@ -3,8 +3,15 @@ const evo    = require('./evolution.service');
 
 // Eventos disponíveis — usados no frontend e no dispatch
 const EVENTOS = {
-  'portaria:entrada':                    'Portaria — Entrada',
-  'portaria:saida':                      'Portaria — Saída',
+  'portaria2:veiculo:entrada':             'Portaria 2 — Entrada de Veículos',
+  'portaria2:veiculo:saida':               'Portaria 2 — Saída de Veículos',
+  'portaria2:pedestre:entrada':            'Portaria 2 — Entrada de Pedestres',
+  'portaria2:pedestre:saida':              'Portaria 2 — Saída de Pedestres',
+  'portaria1:pedestre:entrada':            'Portaria 1 — Entrada de Pedestres',
+  'portaria1:pedestre:saida':              'Portaria 1 — Saída de Pedestres',
+  // legado — contatos antigos continuam recebendo
+  'portaria:entrada':                      'Portaria — Entrada (todos)',
+  'portaria:saida':                        'Portaria — Saída (todos)',
   'ocorrencia:Segurança do Trabalho':    'Ocorrência: Segurança do Trabalho',
   'ocorrencia:Segurança Patrimonial':    'Ocorrência: Segurança Patrimonial',
   'ocorrencia:Conflitos Internos':       'Ocorrência: Conflitos Internos',
@@ -78,11 +85,19 @@ function msgOcorrencia(oc) {
 }
 
 async function portariaEntrada(reg) {
-  await disparar(['portaria:entrada'], msgPortariaEntrada(reg));
+  const num   = reg.portaria?.numero
+  const tipo  = reg.portaria?.tipo === 'pedestres' ? 'pedestre' : 'veiculo'
+  const keys  = ['portaria:entrada']
+  if (num) keys.push(`portaria${num}:${tipo}:entrada`)
+  await disparar(keys, msgPortariaEntrada(reg));
 }
 
 async function portariaSaida(reg) {
-  await disparar(['portaria:saida'], msgPortariaSaida(reg));
+  const num   = reg.portaria?.numero
+  const tipo  = reg.portaria?.tipo === 'pedestres' ? 'pedestre' : 'veiculo'
+  const keys  = ['portaria:saida']
+  if (num) keys.push(`portaria${num}:${tipo}:saida`)
+  await disparar(keys, msgPortariaSaida(reg));
 }
 
 async function ocorrencia(oc) {

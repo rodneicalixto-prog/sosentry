@@ -3,6 +3,7 @@ import { Search, LogOut, CheckCircle, AlertTriangle } from 'lucide-react'
 import api from '../api/client'
 import StatusBadge from '../components/StatusBadge'
 import FotoUpload from '../components/FotoUpload'
+import AnexosInput from '../components/AnexosInput'
 
 function fmt(iso) {
   if (!iso) return '—'
@@ -21,6 +22,7 @@ export default function RegistrarSaida() {
   const [lacreImageUrl, setLacreImageUrl] = useState(null)
   const [fotoCarroceriaUrl, setFotoCarroceriaUrl] = useState(null)
   const [obsOcorrencia, setObsOcorrencia] = useState('')
+  const [obsAnexos, setObsAnexos] = useState([])
 
   const isEntrega = registro?.tipoOperacao?.toLowerCase() === 'entrega'
 
@@ -60,13 +62,11 @@ export default function RegistrarSaida() {
     setConfirmando(true); setErro('')
     try {
       await api.patch(`/api/registros/${registro.protocolo}/saida`, {
-        lacreImageUrl,
-        fotoCarroceriaUrl,
-        obsOcorrencia,
+        lacreImageUrl, fotoCarroceriaUrl, obsOcorrencia, obsAnexos,
       })
       setSucesso(`Saída registrada — protocolo ${registro.protocolo}`)
       setRegistro(null); setProtocolo('')
-      setLacreImageUrl(null); setFotoCarroceriaUrl(null); setObsOcorrencia('')
+      setLacreImageUrl(null); setFotoCarroceriaUrl(null); setObsOcorrencia(''); setObsAnexos([])
     } catch (e) {
       setErro(e.response?.data?.error || 'Erro ao registrar saída.')
     } finally {
@@ -171,6 +171,11 @@ export default function RegistrarSaida() {
                   value={obsOcorrencia}
                   onChange={e => setObsOcorrencia(e.target.value)}
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fotos e Arquivos</label>
+                <AnexosInput value={obsAnexos} onChange={setObsAnexos} disabled={confirmando} />
               </div>
 
               <button type="submit" disabled={confirmando}

@@ -1,0 +1,1 @@
+ALTER TABLE "registros" ADD COLUMN IF NOT EXISTS "obs_anexos" JSONB NOT NULL DEFAULT '[]';

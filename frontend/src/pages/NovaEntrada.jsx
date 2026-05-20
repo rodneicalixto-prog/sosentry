@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { ChevronLeft, CheckCircle, AlertCircle, UserPlus } from 'lucide-react'
 import api from '../api/client'
+import AnexosInput from '../components/AnexosInput'
 
 function formatCPF(value) {
   const digits = value.replace(/\D/g, '').slice(0, 11)
@@ -30,6 +31,7 @@ export default function NovaEntrada() {
   const navigate = useNavigate()
   const [portarias, setPortarias] = useState([])
   const [temAjudante, setTemAjudante] = useState(false)
+  const [obsAnexos, setObsAnexos] = useState([])
   const [success, setSuccess] = useState('')
   const [serverError, setServerError] = useState('')
 
@@ -100,7 +102,7 @@ export default function NovaEntrada() {
     setServerError('')
     setSuccess('')
     try {
-      const payload = { ...formData, temAjudante }
+      const payload = { ...formData, temAjudante, obsAnexos }
       if (payload.telefoneMotorista) payload.telefoneMotorista = prefixTel(payload.telefoneMotorista)
       if (!temAjudante) {
         ;['nomeAjudante', 'cpfAjudante', 'telefoneAjudante', 'rgAjudante'].forEach(k => delete payload[k])
@@ -112,6 +114,7 @@ export default function NovaEntrada() {
       setSuccess(`Entrada registrada com sucesso! Protocolo: ${data.protocolo || data.id}`)
       reset()
       setTemAjudante(false)
+      setObsAnexos([])
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
       const msg =
@@ -476,6 +479,11 @@ export default function NovaEntrada() {
                 maxLength={2000}
                 {...register('obsGeral')}
               />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="label">Fotos e Arquivos da Observação</label>
+              <AnexosInput value={obsAnexos} onChange={setObsAnexos} />
             </div>
           </div>
         </div>
