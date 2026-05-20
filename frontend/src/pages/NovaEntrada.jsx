@@ -91,13 +91,21 @@ export default function NovaEntrada() {
     setValue('placa', formatPlaca(e.target.value), { shouldValidate: false })
   }
 
+  const prefixTel = (v) => {
+    const d = (v || '').replace(/\D/g, '')
+    return d ? '55' + d : ''
+  }
+
   const onSubmit = async (formData) => {
     setServerError('')
     setSuccess('')
     try {
       const payload = { ...formData, temAjudante }
+      if (payload.telefoneMotorista) payload.telefoneMotorista = prefixTel(payload.telefoneMotorista)
       if (!temAjudante) {
         ;['nomeAjudante', 'cpfAjudante', 'telefoneAjudante', 'rgAjudante'].forEach(k => delete payload[k])
+      } else if (payload.telefoneAjudante) {
+        payload.telefoneAjudante = prefixTel(payload.telefoneAjudante)
       }
 
       const { data } = await api.post('/api/registros', payload)
@@ -214,13 +222,16 @@ export default function NovaEntrada() {
               <label className="label" htmlFor="telefoneMotorista">
                 Telefone
               </label>
-              <input
-                id="telefoneMotorista"
-                type="tel"
-                className="input"
-                placeholder="(00) 00000-0000"
-                {...register('telefoneMotorista')}
-              />
+              <div className="flex">
+                <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-100 text-sm text-gray-600 font-medium select-none">+55</span>
+                <input
+                  id="telefoneMotorista"
+                  type="tel"
+                  className="input rounded-l-none flex-1"
+                  placeholder="11 99999-9999"
+                  {...register('telefoneMotorista')}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -345,19 +356,16 @@ export default function NovaEntrada() {
             {!isPedestre && (
               <div>
                 <label className="label" htmlFor="notaFiscal">
-                  Nota Fiscal{isColeta && <span className="text-red-500 ml-0.5">*</span>}
+                  Nota Fiscal
                 </label>
                 <input
                   id="notaFiscal"
                   type="text"
-                  className={`input ${errors.notaFiscal ? 'border-red-400' : ''}`}
+                  className="input"
                   placeholder="Número da NF"
                   maxLength={50}
-                  {...register('notaFiscal', {
-                    validate: v => !isColeta || !!v || 'Nota Fiscal obrigatória para Coleta',
-                  })}
+                  {...register('notaFiscal')}
                 />
-                <InputError message={errors.notaFiscal?.message} />
               </div>
             )}
 
@@ -543,13 +551,16 @@ export default function NovaEntrada() {
                 <label className="label" htmlFor="telefoneAjudante">
                   Telefone do Ajudante
                 </label>
-                <input
-                  id="telefoneAjudante"
-                  type="tel"
-                  className="input"
-                  placeholder="(00) 00000-0000"
-                  {...register('telefoneAjudante')}
-                />
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-100 text-sm text-gray-600 font-medium select-none">+55</span>
+                  <input
+                    id="telefoneAjudante"
+                    type="tel"
+                    className="input rounded-l-none flex-1"
+                    placeholder="11 99999-9999"
+                    {...register('telefoneAjudante')}
+                  />
+                </div>
               </div>
             </div>
           )}

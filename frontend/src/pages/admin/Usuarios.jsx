@@ -217,9 +217,11 @@ export default function Usuarios() {
     setShowModal(true)
   }
 
+  const stripPrefix = (tel) => (tel || '').replace(/^55/, '')
+
   const openEdit = (u) => {
     setEditingUser(u); setModalError(''); setRecebeWhatsapp(!!u.recebeWhatsapp)
-    reset({ nome: u.nome||'', login: u.login||'', email: u.email||'', senha: '', role: u.role||'', turno: u.turno||'', setor: u.setor||'', telefone: u.telefone||'' })
+    reset({ nome: u.nome||'', login: u.login||'', email: u.email||'', senha: '', role: u.role||'', turno: u.turno||'', setor: u.setor||'', telefone: stripPrefix(u.telefone) })
     setShowModal(true)
   }
 
@@ -228,6 +230,10 @@ export default function Usuarios() {
     try {
       const payload = { ...formData, recebeWhatsapp }
       if (!payload.senha) delete payload.senha
+      if (payload.telefone) {
+        const d = payload.telefone.replace(/\D/g, '')
+        payload.telefone = d ? '55' + d : ''
+      }
       if (editingUser) {
         await api.patch(`/api/users/${editingUser.id}`, payload)
         setSuccess('Usuário atualizado com sucesso.')
@@ -281,13 +287,14 @@ export default function Usuarios() {
               <div>
                 <label className="label">Login <span className="text-red-500">*</span></label>
                 <input type="text" className={`input ${errors.login ? 'border-red-400' : ''}`}
+                  autoComplete="off"
                   {...register('login', { required: 'Informe o login' })} />
                 <InputError message={errors.login?.message} />
               </div>
 
               <div>
                 <label className="label">E-mail</label>
-                <input type="email" className="input" {...register('email')} />
+                <input type="email" className="input" autoComplete="off" {...register('email')} />
               </div>
 
               <div>
@@ -296,6 +303,7 @@ export default function Usuarios() {
                   {editingUser && <span className="text-gray-400 font-normal text-xs ml-1">(em branco = manter)</span>}
                 </label>
                 <input type="password" className={`input ${errors.senha ? 'border-red-400' : ''}`}
+                  autoComplete="new-password"
                   {...register('senha', {
                     required: !editingUser ? 'Informe a senha' : false,
                     minLength: { value: 6, message: 'Mínimo 6 caracteres' },
@@ -332,10 +340,12 @@ export default function Usuarios() {
               <div>
                 <label className="label">
                   Telefone / WhatsApp
-                  <span className="ml-1 text-xs text-gray-400 font-normal">(com DDI+DDD)</span>
                 </label>
-                <input type="tel" className="input" placeholder="5511999999999"
-                  {...register('telefone')} />
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-100 text-sm text-gray-600 font-medium select-none">+55</span>
+                  <input type="tel" className="input rounded-l-none flex-1" placeholder="11 99999-9999"
+                    {...register('telefone')} />
+                </div>
               </div>
 
               <div className="sm:col-span-2">

@@ -96,8 +96,6 @@ exports.criar = async (req, res, next) => {
     if (d.notaFiscal?.length > 50) return res.status(400).json({ error: 'Nota fiscal muito longa (máx 50 chars)' })
     if (d.obsMaterial?.length > 500) return res.status(400).json({ error: 'Observação de material muito longa (máx 500 chars)' })
     if (d.obsGeral?.length > 2000) return res.status(400).json({ error: 'Observação geral muito longa (máx 2000 chars)' })
-    if (!isPedestre && d.tipoOperacao?.toLowerCase() === 'coleta' && !d.notaFiscal)
-      return res.status(400).json({ error: 'Nota Fiscal obrigatória para operação de Coleta' })
     if (d.temAjudante && !ajNome) return res.status(400).json({ error: 'Nome do ajudante obrigatório' })
     if (ajCpf && !validarCPF(ajCpf)) return res.status(400).json({ error: 'CPF do ajudante inválido' })
     if (ajTel && !validarTelefone(ajTel)) return res.status(400).json({ error: 'Telefone do ajudante inválido (10–15 dígitos)' })

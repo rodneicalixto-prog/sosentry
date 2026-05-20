@@ -36,7 +36,7 @@ function AbaConexaoAPI() {
 
   useEffect(() => {
     api.get('/api/configuracoes/evo').then(({ data }) => {
-      setForm({ evo_url: data.evo_url||'', evo_key: data.evo_key_masked||'', evo_instance: data.evo_instance||'', evo_responsavel: data.evo_responsavel||'' })
+      setForm({ evo_url: data.evo_url||'', evo_key: data.evo_key_masked||'', evo_instance: data.evo_instance||'', evo_responsavel: (data.evo_responsavel||'').replace(/^55/, '') })
     }).catch(() => setFb({ tipo: 'erro', msg: 'Erro ao carregar configurações.' }))
   }, [])
 
@@ -45,7 +45,8 @@ function AbaConexaoAPI() {
   async function salvar(e) {
     e.preventDefault(); setSalvando(true)
     try {
-      await api.post('/api/configuracoes/evo', form)
+      const evo_responsavel = form.evo_responsavel ? '55' + form.evo_responsavel.replace(/\D/g, '') : ''
+      await api.post('/api/configuracoes/evo', { ...form, evo_responsavel })
       setFb({ tipo: 'ok', msg: 'Configurações salvas com sucesso!' })
     } catch { setFb({ tipo: 'erro', msg: 'Erro ao salvar configurações.' }) }
     finally { setSalvando(false) }
@@ -74,9 +75,12 @@ function AbaConexaoAPI() {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp do Responsável Geral</label>
-          <input className={input} placeholder="5511999999999 (com DDI)" value={form.evo_responsavel}
-            onChange={e => setForm(f => ({ ...f, evo_responsavel: e.target.value }))} />
-          <p className="text-xs text-gray-400 mt-1">Recebe todas as notificações de entrada. Sem formatação, só números.</p>
+          <div className="flex">
+            <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-100 text-sm text-gray-600 font-medium select-none">+55</span>
+            <input className={`${input} rounded-l-none`} type="tel" placeholder="11 99999-9999" value={form.evo_responsavel}
+              onChange={e => setForm(f => ({ ...f, evo_responsavel: e.target.value.replace(/\D/g, '') }))} />
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Recebe todas as notificações de entrada.</p>
         </div>
         <button type="submit" disabled={salvando}
           className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
@@ -506,7 +510,8 @@ function AbaSuperadmin() {
       return setFb({ tipo: 'erro', msg: 'Nome, login e senha são obrigatórios.' })
     setSalvando(true)
     try {
-      await api.post('/api/users', { ...form, role: 'superadmin' })
+      const tel = form.telefone ? '55' + form.telefone.replace(/\D/g, '') : ''
+      await api.post('/api/users', { ...form, telefone: tel, role: 'superadmin' })
       setFb({ tipo: 'ok', msg: `Superadmin "${form.nome}" criado com sucesso!` })
       setForm({ nome: '', login: '', email: '', senha: '', telefone: '' })
       carregar()
@@ -579,9 +584,12 @@ function AbaSuperadmin() {
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp (com DDI)</label>
-              <input className={input} placeholder="5511999999999" value={form.telefone}
-                onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
+              <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
+              <div className="flex">
+                <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-100 text-sm text-gray-600 font-medium select-none">+55</span>
+                <input className={`${input} rounded-l-none`} type="tel" placeholder="11 99999-9999" value={form.telefone}
+                  onChange={e => setForm(f => ({ ...f, telefone: e.target.value.replace(/\D/g, '') }))} />
+              </div>
             </div>
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Senha <span className="text-red-500">*</span></label>
@@ -630,7 +638,7 @@ GRUPOS_EVENTOS.forEach(g => g.eventos.forEach(e => { EVENTO_LABELS[e.key] = `${g
 
 function ContatoModal({ contato, onSave, onClose }) {
   const [nome, setNome]         = useState(contato?.nome     || '')
-  const [telefone, setTelefone] = useState(contato?.telefone || '')
+  const [telefone, setTelefone] = useState((contato?.telefone || '').replace(/^55/, ''))
   const [eventos, setEventos]   = useState(new Set(contato?.eventos || []))
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro]         = useState('')
@@ -659,7 +667,8 @@ function ContatoModal({ contato, onSave, onClose }) {
     if (eventos.size === 0) return setErro('Selecione ao menos um evento')
     setSalvando(true); setErro('')
     try {
-      const payload = { nome, telefone, eventos: [...eventos], ativo: contato?.ativo ?? true }
+      const telFull = telefone ? '55' + telefone.replace(/\D/g, '') : ''
+      const payload = { nome, telefone: telFull, eventos: [...eventos], ativo: contato?.ativo ?? true }
       if (contato?.id) {
         await api.patch(`/api/contatos-notificacao/${contato.id}`, payload)
       } else {
@@ -690,7 +699,10 @@ function ContatoModal({ contato, onSave, onClose }) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp <span className="text-red-500">*</span></label>
-            <input className={input} placeholder="5511999999999 (com DDI, só números)" value={telefone} onChange={e => setTelefone(e.target.value)} />
+            <div className="flex">
+              <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-100 text-sm text-gray-600 font-medium select-none">+55</span>
+              <input className={`${input} rounded-l-none`} type="tel" placeholder="11 99999-9999" value={telefone} onChange={e => setTelefone(e.target.value.replace(/\D/g, ''))} />
+            </div>
           </div>
 
           <div>
