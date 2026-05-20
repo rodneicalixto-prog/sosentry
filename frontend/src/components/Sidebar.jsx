@@ -14,6 +14,7 @@ import {
   BarChart2,
   AlertTriangle,
   KeyRound,
+  GraduationCap,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import AlterarSenhaModal from './AlterarSenhaModal'
@@ -24,6 +25,7 @@ const NAV = [
   { to: '/registros/novo', label: 'Nova Entrada', icon: PlusCircle, minRole: 'operador', accent: true },
   { to: '/saida', label: 'Registrar Saída', icon: LogOutIcon, minRole: 'operador' },
   { to: '/ocorrencias', label: 'Ocorrências', icon: AlertTriangle, minRole: 'operador' },
+  { to: '/universidade', label: 'Universidade', icon: GraduationCap, minRole: 'operador' },
 ]
 
 const ADMIN_NAV = [

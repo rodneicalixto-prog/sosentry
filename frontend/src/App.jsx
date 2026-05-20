@@ -23,6 +23,7 @@ import RegistrarSaida from './pages/RegistrarSaida'
 import Ocorrencias from './pages/Ocorrencias'
 import NovaOcorrencia from './pages/NovaOcorrencia'
 import OcorrenciaDetalhe from './pages/OcorrenciaDetalhe'
+import Universidade from './pages/Universidade'
 
 function TrocaSenhaOverlay() {
   const { user, clearTrocaSenhaObrigatoria } = useAuth()
@@ -70,6 +71,7 @@ export default function App() {
             <Route path="/ocorrencias"        element={<Ocorrencias />} />
             <Route path="/ocorrencias/nova"   element={<NovaOcorrencia />} />
             <Route path="/ocorrencias/:id"    element={<OcorrenciaDetalhe />} />
+            <Route path="/universidade"       element={<Universidade />} />
 
             <Route
               path="/admin/relatorios"

@@ -53,6 +53,7 @@ model User {
   registrosSaida   Registro[] @relation("OperadorSaida")
   auditLogs    AuditLog[]
   ocorrencias  Ocorrencia[]
+  videosUniversidade VideoUniversidade[]
   @@map("users")
 }
 model Session {
@@ -209,4 +210,21 @@ model NotificacaoSetor {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
   @@map("notificacoes_setor")
+}
+
+model VideoUniversidade {
+  id          String   @id @default(uuid())
+  titulo      String
+  descricao   String?
+  categoria   String   @default("Geral")
+  videoUrl    String   @map("video_url")
+  thumbUrl    String?  @map("thumb_url")
+  destaque    Boolean  @default(false)
+  ordem       Int      @default(0)
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  criadoPorId String?  @map("criado_por_id")
+  criadoPor   User?    @relation(fields: [criadoPorId], references: [id])
+  @@map("videos_universidade")
 }
