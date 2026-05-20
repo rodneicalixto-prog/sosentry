@@ -15,7 +15,7 @@ async function authenticate(req, res, next) {
     }
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id:true, nome:true, login:true, role:true, ativo:true }
+      select: { id:true, nome:true, login:true, role:true, ativo:true, trocaSenhaObrigatoria:true }
     });
     if (!user || !user.ativo) return res.status(401).json({ error: 'Usuário inativo' });
     req.user = user;

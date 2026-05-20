@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { ShieldCheck, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import api from '../api/client'
+import PasswordStrength from '../components/PasswordStrength'
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams()
@@ -95,6 +96,7 @@ export default function ResetPassword() {
                     {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <PasswordStrength senha={novaSenha} />
               </div>
               <div>
                 <label className="label" htmlFor="confirmar">Confirmar nova senha</label>

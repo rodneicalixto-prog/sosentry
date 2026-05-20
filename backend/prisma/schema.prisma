@@ -43,6 +43,7 @@ model User {
   telefone          String?
   resetToken        String?   @unique @map("reset_token")
   resetTokenExpiry  DateTime? @map("reset_token_expiry")
+  trocaSenhaObrigatoria Boolean @default(false) @map("troca_senha_obrigatoria")
   ativo        Boolean   @default(true)
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
@@ -52,6 +53,7 @@ model User {
   registrosSaida   Registro[] @relation("OperadorSaida")
   auditLogs    AuditLog[]
   ocorrencias  Ocorrencia[]
+  videosUniversidade VideoUniversidade[]
   @@map("users")
 }
 model Session {
@@ -103,6 +105,7 @@ model Registro {
   lacreImageUrl     String?        @map("lacre_image_url")
   fotoCarroceriaUrl String?        @map("foto_carroceria_url")
   obsOcorrencia     String?        @map("obs_ocorrencia")
+  obsAnexos         Json           @default("[]") @map("obs_anexos")
   horaSaida         DateTime?      @map("hora_saida")
   setorDestino      String?        @map("setor_destino")
   falarCom          String?        @map("falar_com")
@@ -207,4 +210,21 @@ model NotificacaoSetor {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
   @@map("notificacoes_setor")
+}
+
+model VideoUniversidade {
+  id          String   @id @default(uuid())
+  titulo      String
+  descricao   String?
+  categoria   String   @default("Geral")
+  videoUrl    String   @map("video_url")
+  thumbUrl    String?  @map("thumb_url")
+  destaque    Boolean  @default(false)
+  ordem       Int      @default(0)
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  criadoPorId String?  @map("criado_por_id")
+  criadoPor   User?    @relation(fields: [criadoPorId], references: [id])
+  @@map("videos_universidade")
 }

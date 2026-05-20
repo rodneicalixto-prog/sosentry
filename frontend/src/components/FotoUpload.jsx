@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react'
-import { Camera, X, Image as ImageIcon } from 'lucide-react'
+import { Camera, X, Image as ImageIcon, FolderOpen } from 'lucide-react'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://yshvniyhtnyhnjcecbft.supabase.co'
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzaHZuaXlodG55aG5qY2VjYmZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MDcyMTMsImV4cCI6MjA5MjI4MzIxM30.0tYb9047OInZtAW3SAi2zS-m7sudE3Ui-HjZxIfj87c'
@@ -24,7 +24,8 @@ export async function uploadFoto(file) {
 }
 
 export default function FotoUpload({ label, obrigatorio = false, value, onChange, disabled }) {
-  const inputRef = useRef(null)
+  const inputCameraRef = useRef(null)
+  const inputGaleriaRef = useRef(null)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState('')
   const [preview, setPreview] = useState(null)
@@ -64,7 +65,8 @@ export default function FotoUpload({ label, obrigatorio = false, value, onChange
     setPreview(null)
     onChange(null)
     setErro('')
-    if (inputRef.current) inputRef.current.value = ''
+    if (inputCameraRef.current) inputCameraRef.current.value = ''
+    if (inputGaleriaRef.current) inputGaleriaRef.current.value = ''
   }
 
   return (
@@ -75,22 +77,32 @@ export default function FotoUpload({ label, obrigatorio = false, value, onChange
       </label>
 
       {!value && !enviando && (
-        <div
-          className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
-          onClick={() => inputRef.current?.click()}
-        >
-          <Camera className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-          <p className="text-sm text-gray-500">Toque para tirar foto ou selecionar da galeria</p>
-          <p className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP, HEIC · máx 10 MB</p>
-          {/* Sem capture="environment" para permitir câmera E galeria em todos os dispositivos */}
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            disabled={disabled}
-            onChange={e => handleFile(e.target.files?.[0])}
-          />
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+          <div className="flex justify-center gap-3 mb-2">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => inputCameraRef.current?.click()}
+              className="flex flex-col items-center gap-1.5 px-5 py-3 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 transition-colors disabled:opacity-50"
+            >
+              <Camera className="w-6 h-6" />
+              <span className="text-xs font-medium">Câmera</span>
+            </button>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => inputGaleriaRef.current?.click()}
+              className="flex flex-col items-center gap-1.5 px-5 py-3 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 transition-colors disabled:opacity-50"
+            >
+              <FolderOpen className="w-6 h-6" />
+              <span className="text-xs font-medium">Galeria</span>
+            </button>
+          </div>
+          <p className="text-xs text-gray-400">JPG, PNG, WEBP, HEIC · máx 10 MB</p>
+          <input ref={inputCameraRef} type="file" accept="image/*" capture="environment"
+            className="hidden" disabled={disabled} onChange={e => handleFile(e.target.files?.[0])} />
+          <input ref={inputGaleriaRef} type="file" accept="image/*"
+            className="hidden" disabled={disabled} onChange={e => handleFile(e.target.files?.[0])} />
         </div>
       )}
 

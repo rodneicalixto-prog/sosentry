@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -13,8 +13,11 @@ import {
   ShieldCheck,
   BarChart2,
   AlertTriangle,
+  KeyRound,
+  GraduationCap,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import AlterarSenhaModal from './AlterarSenhaModal'
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, minRole: 'supervisor', exact: true },
@@ -22,6 +25,7 @@ const NAV = [
   { to: '/registros/novo', label: 'Nova Entrada', icon: PlusCircle, minRole: 'operador', accent: true },
   { to: '/saida', label: 'Registrar Saída', icon: LogOutIcon, minRole: 'operador' },
   { to: '/ocorrencias', label: 'Ocorrências', icon: AlertTriangle, minRole: 'operador' },
+  { to: '/universidade', label: 'Universidade', icon: GraduationCap, minRole: 'operador' },
 ]
 
 const ADMIN_NAV = [
@@ -34,6 +38,7 @@ const ADMIN_NAV = [
 export default function Sidebar({ open, onClose }) {
   const { user, logout, hasRole } = useAuth()
   const navigate = useNavigate()
+  const [alterarSenhaAberto, setAlterarSenhaAberto] = useState(false)
 
   const handleLogout = async () => {
     await logout()
@@ -126,6 +131,13 @@ export default function Sidebar({ open, onClose }) {
             <p className="text-xs text-white/50 capitalize">{user?.role}</p>
           </div>
           <button
+            onClick={() => setAlterarSenhaAberto(true)}
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors mb-1"
+          >
+            <KeyRound className="w-4 h-4" />
+            Alterar senha
+          </button>
+          <button
             onClick={handleLogout}
             className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors"
           >
@@ -134,6 +146,10 @@ export default function Sidebar({ open, onClose }) {
           </button>
         </div>
       </aside>
+
+      {alterarSenhaAberto && (
+        <AlterarSenhaModal onClose={() => setAlterarSenhaAberto(false)} />
+      )}
     </>
   )
 }

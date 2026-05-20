@@ -1,9 +1,10 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './contexts/AuthContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { RealtimeProvider } from './contexts/RealtimeContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
+import AlterarSenhaModal from './components/AlterarSenhaModal'
 
 import ErrorBoundary from './components/ErrorBoundary'
 import InstallBanner from './components/InstallBanner'
@@ -22,6 +23,13 @@ import RegistrarSaida from './pages/RegistrarSaida'
 import Ocorrencias from './pages/Ocorrencias'
 import NovaOcorrencia from './pages/NovaOcorrencia'
 import OcorrenciaDetalhe from './pages/OcorrenciaDetalhe'
+import Universidade from './pages/Universidade'
+
+function TrocaSenhaOverlay() {
+  const { user, clearTrocaSenhaObrigatoria } = useAuth()
+  if (!user?.trocaSenhaObrigatoria) return null
+  return <AlterarSenhaModal onClose={clearTrocaSenhaObrigatoria} />
+}
 
 export default function App() {
   return (
@@ -63,6 +71,7 @@ export default function App() {
             <Route path="/ocorrencias"        element={<Ocorrencias />} />
             <Route path="/ocorrencias/nova"   element={<NovaOcorrencia />} />
             <Route path="/ocorrencias/:id"    element={<OcorrenciaDetalhe />} />
+            <Route path="/universidade"       element={<Universidade />} />
 
             <Route
               path="/admin/relatorios"
@@ -101,6 +110,7 @@ export default function App() {
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <TrocaSenhaOverlay />
         <InstallBanner />
       </RealtimeProvider>
       </AuthProvider>

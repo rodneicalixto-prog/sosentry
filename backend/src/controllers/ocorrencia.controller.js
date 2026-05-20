@@ -1,17 +1,10 @@
+const { randomInt } = require('crypto');
 const prisma   = require('../lib/prisma');
 const evo      = require('../services/evolution.service');
 const notifSvc = require('../services/notificacao.service');
 
 async function notificarOcorrencia(oc) {
   try {
-    // 1. Responsável pré-configurado (evo_responsavel)
-    evo.enviarOcorrencia(oc).catch(e => console.error('[evo] ocorrência:', e.message));
-
-    // 2. Usuários com recebeWhatsapp=true (deduplicado)
-    const usuarios = await prisma.user.findMany({
-      where: { ativo: true, recebeWhatsapp: true, telefone: { not: null } },
-      select: { nome: true, telefone: true },
-    });
     const pad = n => String(n).padStart(2, '0');
     const d = new Date(oc.dataHora);
     const hora = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
@@ -21,7 +14,32 @@ async function notificarOcorrencia(oc) {
       `🚨 *SOS Entry — Ocorrência [${oc.categoria}]*\n\n` +
       `📋 ${oc.protocolo}\n📌 ${oc.tipo}\n📍 ${oc.local}\n🕐 ${hora} · ${data}\n\n` +
       `📝 ${descTrunc}`;
+
+    // Coleta todos os números que serão notificados pelos outros canais
+    // para deduplicar e evitar mensagens duplicadas
+    const [contatosNotif, usuarios] = await Promise.all([
+      prisma.contatoNotificacao.findMany({
+        where: { ativo: true, eventos: { hasSome: [`ocorrencia:${oc.categoria}`] } },
+        select: { telefone: true },
+      }),
+      prisma.user.findMany({
+        where: { ativo: true, recebeWhatsapp: true, telefone: { not: null } },
+        select: { nome: true, telefone: true },
+      }),
+    ]);
+
+    const numerosJaNotificados = new Set(
+      contatosNotif.map(c => c.telefone.replace(/\D/g, ''))
+    );
+
+    // 1. Responsável pré-configurado (evo_responsavel) — via enviarOcorrencia
+    evo.enviarOcorrencia(oc).catch(e => console.error('[evo] ocorrência:', e.message));
+
+    // 2. Usuários com recebeWhatsapp=true, deduplica contra contatoNotificacao
     for (const u of usuarios) {
+      const num = u.telefone.replace(/\D/g, '');
+      if (numerosJaNotificados.has(num)) continue;
+      numerosJaNotificados.add(num);
       evo.send(u.telefone, msg).catch(e => console.error(`[evo] usuário ${u.nome}: ${e.message}`));
     }
   } catch (e) {
@@ -33,7 +51,7 @@ function gerarProtocolo() {
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
   const data = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}`;
-  return `OCR-${data}-${Math.floor(Math.random()*9000)+1000}`;
+  return `OCR-${data}-${randomInt(100000, 999999)}`;
 }
 
 exports.criar = async (req, res, next) => {
@@ -237,6 +255,12 @@ exports.exportar = async (req, res, next) => {
 
     const csv = '﻿' + [header.join(','), ...rows].join('\r\n');
     const filename = `ocorrencias_${new Date().toISOString().slice(0,10)}.csv`;
+
+    prisma.auditLog.create({ data: {
+      userId: req.user.id, acao: 'EXPORTAR_OCORRENCIAS', entidade: 'ocorrencias',
+      detalhes: { total: ocorrencias.length, filtros: { status, categoria, busca, dataInicio, dataFim } }, ip: req.ip,
+    }}).catch(e => console.warn('[audit] export:', e.message));
+
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(csv);

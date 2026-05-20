@@ -25,7 +25,8 @@ exports.login = async (req, res, next) => {
     });
     await prisma.auditLog.create({ data: { userId: user.id, acao:'LOGIN', entidade:'session', ip: req.ip } });
     res.json({ accessToken: access, refreshToken: refresh,
-               user: { id: user.id, nome: user.nome, login: user.login, role: user.role, turno: user.turno } });
+               user: { id: user.id, nome: user.nome, login: user.login, role: user.role, turno: user.turno,
+                       trocaSenhaObrigatoria: user.trocaSenhaObrigatoria } });
   } catch(e){ next(e); }
 };
 
@@ -128,7 +129,7 @@ exports.resetPassword = async (req, res, next) => {
   try {
     const { token, novaSenha } = req.body;
     if (!token || !novaSenha) return res.status(400).json({ error: 'Token e nova senha obrigatórios' });
-    if (novaSenha.length < 6) return res.status(400).json({ error: 'A senha deve ter no mínimo 6 caracteres' });
+    if (novaSenha.length < 8) return res.status(400).json({ error: 'A senha deve ter no mínimo 8 caracteres' });
 
     const user = await prisma.user.findUnique({ where: { resetToken: token } });
 
@@ -161,4 +162,39 @@ exports.resetPassword = async (req, res, next) => {
 
     res.json({ ok: true, msg: 'Senha redefinida com sucesso! Faça login com a nova senha.' });
   } catch(e){ next(e); }
+};
+
+// PATCH /api/auth/minha-senha (autenticado)
+exports.minhaSenha = async (req, res, next) => {
+  try {
+    const { senhaAtual, novaSenha, refreshToken } = req.body;
+    if (!novaSenha || novaSenha.length < 8)
+      return res.status(400).json({ error: 'A nova senha deve ter no mínimo 8 caracteres' });
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+    if (!user.trocaSenhaObrigatoria) {
+      if (!senhaAtual) return res.status(400).json({ error: 'Informe a senha atual' });
+      if (!(await bcrypt.compare(senhaAtual, user.passwordHash)))
+        return res.status(400).json({ error: 'Senha atual incorreta' });
+    }
+
+    const hash = await bcrypt.hash(novaSenha, 12);
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { passwordHash: hash, trocaSenhaObrigatoria: false },
+    });
+
+    // Invalida todas as sessões exceto a atual
+    await prisma.session.deleteMany({
+      where: { userId: req.user.id, ...(refreshToken ? { refreshToken: { not: refreshToken } } : {}) },
+    });
+
+    await prisma.auditLog.create({ data: {
+      userId: req.user.id, acao: 'TROCA_SENHA', entidade: 'users', entidadeId: req.user.id, ip: req.ip,
+    }});
+
+    res.json({ ok: true, msg: 'Senha alterada com sucesso.' });
+  } catch(e) { next(e); }
 };
