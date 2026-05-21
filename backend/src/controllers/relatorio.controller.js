@@ -1,15 +1,10 @@
 const { Prisma } = require('@prisma/client');
 const prisma = require('../lib/prisma');
 
-function buildDateFilter(dataInicio, dataFim) {
-  if (!dataInicio && !dataFim) return null;
+function validarDatas(dataInicio, dataFim) {
   const inicio = dataInicio ? new Date(dataInicio + 'T00:00:00Z') : null;
   const fim    = dataFim    ? new Date(dataFim    + 'T23:59:59Z') : null;
-  if ((inicio && isNaN(inicio)) || (fim && isNaN(fim))) return 'invalid';
-  const f = {};
-  if (inicio) f.gte = inicio;
-  if (fim)    f.lte = fim;
-  return f;
+  return !((inicio && isNaN(inicio)) || (fim && isNaN(fim)));
 }
 
 exports.visitas = async (req, res, next) => {
@@ -101,8 +96,7 @@ exports.resumo = async (req, res, next) => {
       return d.toISOString().slice(0, 10)
     })()
 
-    const dtFilter = buildDateFilter(inicioStr, fimStr)
-    if (dtFilter === 'invalid')
+    if (!validarDatas(inicioStr, fimStr))
       return res.status(400).json({ error: 'Data inválida (use YYYY-MM-DD)' })
 
     const inicio = new Date(inicioStr + 'T00:00:00Z')

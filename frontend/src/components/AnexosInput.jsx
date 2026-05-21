@@ -7,7 +7,7 @@ const BUCKET = 'fotos-saida'
 
 async function upload(file) {
   const ext  = file.name.split('.').pop() || 'bin'
-  const nome = `obs/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const nome = `obs/${crypto.randomUUID()}.${ext}`
   const resp = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${nome}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${SUPABASE_ANON}`, 'Content-Type': file.type || 'application/octet-stream' },
