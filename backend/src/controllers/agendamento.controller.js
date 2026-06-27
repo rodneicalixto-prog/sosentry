@@ -269,7 +269,7 @@ exports.liberar = async (req, res, next) => {
     });
     webhookSvc.disparar('agendamento.liberado', updated).catch(() => {});
     telefonesNotificados().then(nums => evo.enviarAgendamentoLiberado(updated, nums)).catch(() => {});
-    emailSvc.enviarAgendamentoChegada(updated).catch(() => {}); // reusa template de chegada
+    emailSvc.enviarAgendamentoLiberado(updated).catch(() => {});
 
     res.json(updated);
   } catch (e) { next(e); }

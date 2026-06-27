@@ -42,13 +42,15 @@ function parseChaveNFe(raw) {
 // ─── Busca agendamento compatível com a NF ────────────────────────────────────
 
 async function buscarAgendamentoNF(nfe) {
-  // Tenta casar pelo número da NF ou pelo CNPJ do emitente
+  // cnpj da NF-e vem sempre com 14 dígitos; o campo salvo pode ter pontuação — normaliza dos dois lados
+  const cnpjDigits = nfe.cnpj; // já são 14 dígitos puros
   const candidatos = await prisma.agendamento.findMany({
     where: {
       status: { in: ['APROVADO', 'NF_RECEBIDA'] },
       OR: [
         { numeroNF: nfe.numeroNF },
-        { cnpj: { contains: nfe.cnpj } },
+        { cnpj: { contains: cnpjDigits, mode: 'insensitive' } },
+        { cnpj: nfe.cnpjFmt },
       ],
     },
     include: { portaria: { select: { nome: true } }, criadoPor: { select: { nome: true } } },
@@ -61,8 +63,16 @@ async function buscarAgendamentoNF(nfe) {
 // ─── Busca empresa cadastrada pelo CNPJ ───────────────────────────────────────
 
 async function buscarEmpresaPorCNPJ(cnpj) {
+  // Tenta tanto dígitos puros quanto formatado para cobrir ambas as formas de armazenamento
+  const fmt = cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
   return prisma.empresa.findFirst({
-    where: { cnpj: { contains: cnpj }, ativo: true },
+    where: {
+      ativo: true,
+      OR: [
+        { cnpj: { contains: cnpj } },
+        { cnpj: fmt },
+      ],
+    },
   });
 }
 
