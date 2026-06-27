@@ -152,6 +152,47 @@ async function enviarAgendamentoChegada(ag, destinos) {
   await Promise.allSettled(destinos.map(n => send(n, msg).catch(e => console.error(`[evo] ag chegada: ${e.message}`))));
 }
 
+async function enviarAgendamentoAguardandoLiberacao(ag, destinos) {
+  const msg =
+    `🔔 *SOS Entry — VEÍCULO AGUARDANDO LIBERAÇÃO*\n\n` +
+    `Um veículo chegou à portaria e aguarda autorização de entrada.\n\n` +
+    `🏢 Empresa: *${ag.empresa || '—'}*\n` +
+    `👤 Motorista: ${ag.motorista || '—'}\n` +
+    `🚗 Placa: ${ag.placa || '—'}\n` +
+    `📄 NF: ${ag.numeroNF || '—'}\n` +
+    `🏗️ Portaria: ${ag.portaria?.nome || '—'}\n` +
+    `🗂️ Depto: ${ag.departamento || '—'}\n` +
+    `⏰ Chegada: ${fmtDataHora(ag.chegadaEm).hora}\n\n` +
+    `⚠️ Acesse o sistema para *LIBERAR A ENTRADA*.`;
+  await Promise.allSettled(destinos.map(n => send(n, msg).catch(e => console.error(`[evo] ag aguardando lib: ${e.message}`))));
+}
+
+async function enviarAgendamentoLiberado(ag, destinos) {
+  const msg =
+    `✅ *SOS Entry — ENTRADA LIBERADA*\n\n` +
+    `🏢 Empresa: *${ag.empresa || '—'}*\n` +
+    `👤 Motorista: ${ag.motorista || '—'}\n` +
+    `🚗 Placa: ${ag.placa || '—'}\n` +
+    `📄 NF: ${ag.numeroNF || '—'}\n` +
+    `🏗️ Portaria: ${ag.portaria?.nome || '—'}\n\n` +
+    `✅ Entrada autorizada. Veículo liberado para acesso.`;
+  await Promise.allSettled(destinos.map(n => send(n, msg).catch(e => console.error(`[evo] ag liberado: ${e.message}`))));
+}
+
+async function enviarAgendamentoSaida(ag, destinos) {
+  const d = ag.dataSaida ? fmtDataHora(ag.dataSaida) : { hora: '—', data: '—' };
+  const msg =
+    `🚚 *SOS Entry — SAÍDA REGISTRADA*\n\n` +
+    `🏢 Empresa: *${ag.empresa || '—'}*\n` +
+    `👤 Motorista: ${ag.motorista || '—'}\n` +
+    `🚗 Placa: ${ag.placa || '—'}\n` +
+    `📄 NF: ${ag.numeroNF || '—'}\n` +
+    `🏗️ Portaria: ${ag.portaria?.nome || '—'}\n` +
+    `⏰ Saída: ${d.hora} · ${d.data}\n\n` +
+    `✅ Agendamento concluído.`;
+  await Promise.allSettled(destinos.map(n => send(n, msg).catch(e => console.error(`[evo] ag saida: ${e.message}`))));
+}
+
 async function enviarLinkAgendamento(numero, link, ag) {
   const msg =
     `📦 *Agendamento de Entrega — SOS Entry*\n\n` +
@@ -182,5 +223,6 @@ module.exports = {
   enviarMensagem: send,
   enviarEntrada, enviarSaida, enviarSetor, enviarOcorrencia,
   enviarAgendamentoNFRecebida, enviarAgendamentoAprovado, enviarAgendamentoChegada,
+  enviarAgendamentoAguardandoLiberacao, enviarAgendamentoLiberado, enviarAgendamentoSaida,
   enviarLinkAgendamento, enviarQRCodeMotorista,
 };

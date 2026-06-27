@@ -6,20 +6,22 @@ import {
 import api from '../../api/client'
 
 const STATUS_LABEL = {
-  AGUARDANDO_NF: 'Aguard. NF',
-  NF_RECEBIDA:   'NF Recebida',
-  APROVADO:      'Aprovado',
-  NA_PORTARIA:   'Na Portaria',
-  CONCLUIDO:     'Concluído',
-  CANCELADO:     'Cancelado',
+  AGUARDANDO_NF:        'Aguard. NF',
+  NF_RECEBIDA:          'NF Recebida',
+  APROVADO:             'Ent. Autorizada',
+  AGUARDANDO_LIBERACAO: 'Aguard. Portaria',
+  NA_PORTARIA:          'Liberado',
+  CONCLUIDO:            'Concluído',
+  CANCELADO:            'Cancelado',
 }
 const STATUS_CORES = {
-  AGUARDANDO_NF: '#fbbf24',
-  NF_RECEBIDA:   '#60a5fa',
-  APROVADO:      '#34d399',
-  NA_PORTARIA:   '#a78bfa',
-  CONCLUIDO:     '#94a3b8',
-  CANCELADO:     '#f87171',
+  AGUARDANDO_NF:        '#fbbf24',
+  NF_RECEBIDA:          '#60a5fa',
+  APROVADO:             '#34d399',
+  AGUARDANDO_LIBERACAO: '#f97316',
+  NA_PORTARIA:          '#a78bfa',
+  CONCLUIDO:            '#94a3b8',
+  CANCELADO:            '#f87171',
 }
 const DEPT_CORES = ['#1d4ed8','#0891b2','#059669','#d97706','#7c3aed','#db2777']
 

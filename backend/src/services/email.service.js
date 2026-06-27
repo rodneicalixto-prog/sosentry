@@ -140,6 +140,85 @@ async function enviarAgendamentoChegada(ag) {
   }).catch(e => console.error('[email] chegada:', e.message));
 }
 
+async function enviarAgendamentoAguardandoLiberacao(ag) {
+  const destinos = await destinatariosEmail();
+  if (!destinos.length) return;
+  const d = new Date(ag.chegadaEm || new Date());
+  const hora = `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
+  const corpo = `
+    <p style="color:#374151;margin:0 0 16px">
+      Um veículo chegou à portaria e aguarda <strong>autorização de entrada</strong> pelo setor responsável.
+    </p>
+    <table cellpadding="0" cellspacing="0" style="width:100%">
+      ${row('Empresa', ag.empresa)}
+      ${row('Motorista', ag.motorista)}
+      ${row('Placa', ag.placa)}
+      ${row('NF', ag.numeroNF)}
+      ${row('Departamento', ag.departamento)}
+      ${row('Portaria', ag.portaria?.nome)}
+      ${row('Chegada', `${hora} · ${fmtData(ag.chegadaEm)}`)}
+    </table>
+    <p style="margin:24px 0 0;padding:12px 16px;background:#fef3c7;border-radius:8px;color:#92400e;font-size:13px">
+      ⚠️ Acesse o sistema e clique em <strong>Liberar Entrada</strong> para autorizar o acesso.
+    </p>`;
+  await send({
+    to: destinos.join(', '),
+    subject: `⚠️ Veículo Aguardando Liberação — ${ag.empresa || '—'} | SOS Entry`,
+    html: templateBase('Veículo Aguardando Liberação na Portaria', corpo),
+  }).catch(e => console.error('[email] aguardando liberacao:', e.message));
+}
+
+async function enviarAgendamentoLiberado(ag) {
+  const destinos = await destinatariosEmail();
+  if (!destinos.length) return;
+  const corpo = `
+    <p style="color:#374151;margin:0 0 16px">
+      A entrada do veículo foi <strong>liberada</strong>. Veículo autorizado a acessar as instalações.
+    </p>
+    <table cellpadding="0" cellspacing="0" style="width:100%">
+      ${row('Empresa', ag.empresa)}
+      ${row('Motorista', ag.motorista)}
+      ${row('Placa', ag.placa)}
+      ${row('NF', ag.numeroNF)}
+      ${row('Portaria', ag.portaria?.nome)}
+    </table>
+    <p style="margin:24px 0 0;padding:12px 16px;background:#dcfce7;border-radius:8px;color:#166534;font-size:13px">
+      ✅ Entrada liberada com sucesso.
+    </p>`;
+  await send({
+    to: destinos.join(', '),
+    subject: `✅ Entrada Liberada — ${ag.empresa || '—'} | SOS Entry`,
+    html: templateBase('Entrada Liberada na Portaria', corpo),
+  }).catch(e => console.error('[email] liberado:', e.message));
+}
+
+async function enviarAgendamentoSaida(ag) {
+  const destinos = await destinatariosEmail();
+  if (!destinos.length) return;
+  const d = new Date(ag.dataSaida || new Date());
+  const hora = `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
+  const corpo = `
+    <p style="color:#374151;margin:0 0 16px">
+      O veículo concluiu a visita e saiu das instalações.
+    </p>
+    <table cellpadding="0" cellspacing="0" style="width:100%">
+      ${row('Empresa', ag.empresa)}
+      ${row('Motorista', ag.motorista)}
+      ${row('Placa', ag.placa)}
+      ${row('NF', ag.numeroNF)}
+      ${row('Portaria', ag.portaria?.nome)}
+      ${row('Saída', `${hora} · ${fmtData(ag.dataSaida || new Date())}`)}
+    </table>
+    <p style="margin:24px 0 0;padding:12px 16px;background:#f1f5f9;border-radius:8px;color:#475569;font-size:13px">
+      🔒 Agendamento concluído.
+    </p>`;
+  await send({
+    to: destinos.join(', '),
+    subject: `🚚 Veículo Saiu — ${ag.empresa || '—'} | SOS Entry`,
+    html: templateBase('Saída de Veículo Agendado', corpo),
+  }).catch(e => console.error('[email] saida agendamento:', e.message));
+}
+
 async function enviarQRCodeConfirmacao(emailDestino, ag, qrBase64) {
   const corpo = `
     <p style="color:#374151;margin:0 0 16px">
@@ -215,6 +294,9 @@ module.exports = {
   enviarAgendamentoNFRecebida,
   enviarAgendamentoAprovado,
   enviarAgendamentoChegada,
+  enviarAgendamentoAguardandoLiberacao,
+  enviarAgendamentoLiberado,
+  enviarAgendamentoSaida,
   enviarLinkAgendamento,
   enviarQRCodeConfirmacao,
 };

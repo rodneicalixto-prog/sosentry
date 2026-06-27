@@ -207,7 +207,7 @@ exports.cancelar = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-// ─── Validar QR (chegada na portaria) ─────────────────────────────────────────
+// ─── Validar QR (chegada na portaria → aguarda liberação do setor) ────────────
 
 exports.validarQR = async (req, res, next) => {
   try {
@@ -219,22 +219,88 @@ exports.validarQR = async (req, res, next) => {
       include: { portaria: { select: { nome: true } }, criadoPor: { select: { nome: true } } },
     });
     if (!ag) return res.status(404).json({ error: 'QR Code inválido ou não encontrado' });
+    if (ag.status === 'AGUARDANDO_LIBERACAO')
+      return res.status(400).json({ error: 'QR já registrado — aguardando liberação do setor responsável', status: ag.status });
     if (ag.status !== 'APROVADO')
       return res.status(400).json({ error: 'Agendamento não está aprovado para entrada', status: ag.status });
 
     const updated = await prisma.agendamento.update({
       where: { id: ag.id },
-      data: { status: 'NA_PORTARIA', chegadaEm: new Date() },
+      data: { status: 'AGUARDANDO_LIBERACAO', chegadaEm: new Date() },
       include: { portaria: { select: { nome: true } } },
     });
 
-    sseSvc.broadcast('agendamento_chegada', {
+    // Notifica setor responsável que o veículo chegou e aguarda liberação
+    sseSvc.broadcast('agendamento_aguardando_liberacao', {
       agendamentoId: updated.id, empresa: updated.empresa, motorista: updated.motorista,
       placa: updated.placa, portaria: updated.portaria?.nome, chegadaEm: updated.chegadaEm,
+      departamento: updated.departamento,
     });
-    webhookSvc.disparar('agendamento.chegada_portaria', updated).catch(() => {});
-    telefonesNotificados().then(nums => evo.enviarAgendamentoChegada(updated, nums)).catch(() => {});
-    emailSvc.enviarAgendamentoChegada(updated).catch(() => {});
+    webhookSvc.disparar('agendamento.aguardando_liberacao', updated).catch(() => {});
+    telefonesNotificados().then(nums => evo.enviarAgendamentoAguardandoLiberacao(updated, nums)).catch(() => {});
+    emailSvc.enviarAgendamentoAguardandoLiberacao(updated).catch(() => {});
+
+    res.json(updated);
+  } catch (e) { next(e); }
+};
+
+// ─── Liberar entrada (setor responsável confirma — portaria abre) ─────────────
+
+exports.liberar = async (req, res, next) => {
+  try {
+    const ag = await prisma.agendamento.findUnique({
+      where: { id: req.params.id },
+      include: { portaria: { select: { nome: true } } },
+    });
+    if (!ag) return res.status(404).json({ error: 'Agendamento não encontrado' });
+    if (ag.status !== 'AGUARDANDO_LIBERACAO')
+      return res.status(400).json({ error: 'Agendamento não está aguardando liberação', status: ag.status });
+
+    const updated = await prisma.agendamento.update({
+      where: { id: ag.id },
+      data: { status: 'NA_PORTARIA' },
+      include: { portaria: { select: { nome: true } } },
+    });
+
+    sseSvc.broadcast('agendamento_liberado', {
+      agendamentoId: updated.id, empresa: updated.empresa, motorista: updated.motorista,
+      placa: updated.placa, portaria: updated.portaria?.nome,
+      liberadoPor: req.user.nome || req.user.login,
+    });
+    webhookSvc.disparar('agendamento.liberado', updated).catch(() => {});
+    telefonesNotificados().then(nums => evo.enviarAgendamentoLiberado(updated, nums)).catch(() => {});
+    emailSvc.enviarAgendamentoChegada(updated).catch(() => {}); // reusa template de chegada
+
+    res.json(updated);
+  } catch (e) { next(e); }
+};
+
+// ─── Registrar Saída do agendamento (CONCLUIDO) ───────────────────────────────
+
+exports.concluir = async (req, res, next) => {
+  try {
+    const ag = await prisma.agendamento.findUnique({
+      where: { id: req.params.id },
+      include: { portaria: { select: { nome: true } } },
+    });
+    if (!ag) return res.status(404).json({ error: 'Agendamento não encontrado' });
+    if (ag.status !== 'NA_PORTARIA')
+      return res.status(400).json({ error: 'Agendamento não está na portaria', status: ag.status });
+
+    const now = new Date();
+    const updated = await prisma.agendamento.update({
+      where: { id: ag.id },
+      data: { status: 'CONCLUIDO', dataSaida: now },
+      include: { portaria: { select: { nome: true } } },
+    });
+
+    sseSvc.broadcast('agendamento_saida', {
+      agendamentoId: updated.id, empresa: updated.empresa, motorista: updated.motorista,
+      placa: updated.placa, portaria: updated.portaria?.nome, dataSaida: now,
+    });
+    webhookSvc.disparar('agendamento.saida', updated).catch(() => {});
+    telefonesNotificados().then(nums => evo.enviarAgendamentoSaida(updated, nums)).catch(() => {});
+    emailSvc.enviarAgendamentoSaida(updated).catch(() => {});
 
     res.json(updated);
   } catch (e) { next(e); }

@@ -235,6 +235,7 @@ enum AgendamentoStatus {
   AGUARDANDO_NF
   NF_RECEBIDA
   APROVADO
+  AGUARDANDO_LIBERACAO
   NA_PORTARIA
   CONCLUIDO
   CANCELADO
@@ -268,6 +269,7 @@ model Agendamento {
   aprovadoPor     User?             @relation("AgendamentoAprovador", fields: [aprovadoPorId], references: [id])
   aprovadoEm      DateTime?         @map("aprovado_em")
   chegadaEm       DateTime?         @map("chegada_em")
+  dataSaida       DateTime?         @map("data_saida")
   registroId      String?           @map("registro_id")
 
   portariaId      String            @map("portaria_id")

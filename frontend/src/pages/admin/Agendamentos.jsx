@@ -3,12 +3,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import api from '../../api/client'
 
 const STATUS_LABEL = {
-  AGUARDANDO_NF: { label: 'Aguardando NF',  color: 'bg-yellow-100 text-yellow-700' },
-  NF_RECEBIDA:   { label: 'NF Recebida',    color: 'bg-blue-100 text-blue-700' },
-  APROVADO:      { label: 'Aprovado',        color: 'bg-green-100 text-green-700' },
-  NA_PORTARIA:   { label: 'Na Portaria',     color: 'bg-purple-100 text-purple-700' },
-  CONCLUIDO:     { label: 'Concluído',       color: 'bg-gray-100 text-gray-600' },
-  CANCELADO:     { label: 'Cancelado',       color: 'bg-red-100 text-red-600' },
+  AGUARDANDO_NF:        { label: 'Aguardando NF',         color: 'bg-yellow-100 text-yellow-700' },
+  NF_RECEBIDA:          { label: 'NF Recebida',           color: 'bg-blue-100 text-blue-700' },
+  APROVADO:             { label: 'Entrada Autorizada',    color: 'bg-green-100 text-green-700' },
+  AGUARDANDO_LIBERACAO: { label: 'Aguard. Liberação',     color: 'bg-orange-100 text-orange-700 font-bold animate-pulse' },
+  NA_PORTARIA:          { label: 'Liberado / Na Portaria',color: 'bg-purple-100 text-purple-700' },
+  CONCLUIDO:            { label: 'Concluído',             color: 'bg-gray-100 text-gray-600' },
+  CANCELADO:            { label: 'Cancelado',             color: 'bg-red-100 text-red-600' },
 }
 
 function Badge({ status }) {
