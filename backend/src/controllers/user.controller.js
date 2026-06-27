@@ -24,6 +24,11 @@ exports.criar = async (req, res, next) => {
   try {
     const { nome, login, email, senha, role='operador', turno, setor, telefone, recebeWhatsapp } = req.body;
 
+    if (!nome?.trim() || nome.length > 100) return res.status(400).json({ error: 'Nome obrigatório (máx 100 chars)' });
+    if (!login?.trim() || login.length > 50) return res.status(400).json({ error: 'Login obrigatório (máx 50 chars)' });
+    if (!senha || senha.length < 8 || senha.length > 128) return res.status(400).json({ error: 'Senha deve ter entre 8 e 128 caracteres' });
+    if (email && email.length > 254) return res.status(400).json({ error: 'E-mail muito longo' });
+
     if (role === 'superadmin' && req.user.role !== 'superadmin')
       return res.status(403).json({ error: 'Apenas superadmins podem criar outros superadmins' });
     if (role !== 'superadmin' && HIER.indexOf(role) >= HIER.indexOf(req.user.role))

@@ -223,6 +223,7 @@ exports.saida = async (req, res, next) => {
         const atual = await tx.registro.findUnique({ where: { protocolo } })
         if (!atual) throw Object.assign(new Error('Protocolo não encontrado'), { _status: 404 })
         if (atual.status === 'saiu') throw Object.assign(new Error('Saída já registrada'), { _status: 400 })
+        if (atual.status !== 'na_empresa') throw Object.assign(new Error('Registro não está autorizado a sair (status: ' + atual.status + ')'), { _status: 400 })
         return tx.registro.update({
           where: { protocolo },
           data: {

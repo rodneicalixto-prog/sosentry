@@ -78,7 +78,7 @@ exports.forgotPassword = async (req, res, next) => {
     // Não processa se usuário não existe, está inativo ou não tem telefone
     if (!user || !user.ativo || !user.telefone) return res.json(RESPOSTA_OK);
 
-    // Token de 256 bits, expira em 15 minutos
+    // Token de 256 bits, expira em 60 minutos
     const token = crypto.randomBytes(32).toString('hex');
     const expiry = new Date(Date.now() + 60 * 60 * 1000);
 

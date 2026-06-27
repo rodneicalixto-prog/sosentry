@@ -139,18 +139,6 @@ async function enviarAgendamentoAprovado(ag, destinos) {
   await Promise.allSettled(destinos.map(n => send(n, msg).catch(e => console.error(`[evo] ag aprovado: ${e.message}`))));
 }
 
-async function enviarAgendamentoChegada(ag, destinos) {
-  const msg =
-    `🚛 *SOS Entry — CAMINHÃO NA PORTARIA*\n\n` +
-    `🏢 Empresa: *${ag.empresa || '—'}*\n` +
-    `👤 Motorista: ${ag.motorista || '—'}\n` +
-    `🚗 Placa: ${ag.placa || '—'}\n` +
-    `📄 NF: ${ag.numeroNF || '—'}\n` +
-    `🏗️ Portaria: ${ag.portaria?.nome || '—'}\n` +
-    `⏰ Chegada: ${fmtDataHora(ag.chegadaEm).hora} · ${fmtDataHora(ag.chegadaEm).data}\n` +
-    `\n⚡ Aguardando liberação da doca.`;
-  await Promise.allSettled(destinos.map(n => send(n, msg).catch(e => console.error(`[evo] ag chegada: ${e.message}`))));
-}
 
 async function enviarAgendamentoAguardandoLiberacao(ag, destinos) {
   const msg =
@@ -222,7 +210,7 @@ module.exports = {
   send,
   enviarMensagem: send,
   enviarEntrada, enviarSaida, enviarSetor, enviarOcorrencia,
-  enviarAgendamentoNFRecebida, enviarAgendamentoAprovado, enviarAgendamentoChegada,
+  enviarAgendamentoNFRecebida, enviarAgendamentoAprovado,
   enviarAgendamentoAguardandoLiberacao, enviarAgendamentoLiberado, enviarAgendamentoSaida,
   enviarLinkAgendamento, enviarQRCodeMotorista,
 };

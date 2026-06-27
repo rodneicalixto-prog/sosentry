@@ -102,8 +102,14 @@ app.use('/api/agendamentos-dash', (() => {
 })());
 app.use('/api/v1/agendamentos', require('./routes/integracaoExterna.routes'));
 
-// Servir uploads de NF (acesso restrito via rota autenticada no frontend)
-app.use('/uploads', require('express').static('/app/uploads'));
+// Servir uploads de NF com autenticação JWT obrigatória
+const { authenticate } = require('./middleware/auth.middleware');
+app.use('/uploads', authenticate, (req, res, next) => {
+  // Bloqueia path traversal
+  const rel = require('path').normalize(req.path);
+  if (rel.startsWith('..')) return res.status(400).end();
+  require('express').static('/app/uploads')(req, res, next);
+});
 
 app.get('/health', async (_, res) => {
   try {

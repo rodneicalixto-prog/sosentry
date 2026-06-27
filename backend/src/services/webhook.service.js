@@ -120,6 +120,13 @@ async function postarComRetry(url, payload, headers, tentativa = 1, inicio = Dat
   return r
 }
 
+async function dispararParaWebhook(wh, evento, dados) {
+  const payload = JSON.stringify({ evento, ts: new Date().toISOString(), dados });
+  const headers = { 'X-SOS-Event': evento, 'X-SOS-Webhook-Id': wh.id };
+  if (wh.secret) headers['X-SOS-Signature'] = assinar(payload, wh.secret);
+  return enqueue(() => postarComRetry(wh.url, payload, headers));
+}
+
 async function disparar(evento, dados) {
   let webhooks;
   try {
@@ -144,4 +151,4 @@ async function disparar(evento, dados) {
   }
 }
 
-module.exports = { disparar };
+module.exports = { disparar, dispararParaWebhook };

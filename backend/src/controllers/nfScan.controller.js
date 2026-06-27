@@ -187,7 +187,7 @@ exports.verificarNF = async (req, res, next) => {
             <tr><td style="padding:4px 12px 4px 0;color:#666">CNPJ Emitente:</td><td>${nfe.cnpjFmt}</td></tr>
             <tr><td style="padding:4px 12px 4px 0;color:#666">UF:</td><td>${nfe.uf}</td></tr>
             <tr><td style="padding:4px 12px 4px 0;color:#666">Emissão:</td><td>${nfe.emissao}</td></tr>
-            ${empresa ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Empresa cadastrada:</td><td>${empresa.nome}</td></tr>` : ''}
+            ${empresa ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Empresa cadastrada:</td><td>${empresa.nome.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td></tr>` : ''}
           </table>
           <p><strong>Nenhum agendamento aprovado encontrado para este CNPJ/NF.</strong></p>
           <p>Verifique se a entrega foi pre-agendada ou entre em contato com o emissor.</p>

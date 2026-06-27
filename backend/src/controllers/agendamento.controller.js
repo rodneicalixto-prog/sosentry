@@ -13,7 +13,7 @@ const TOKEN_HORAS = 72;
 
 function tokenExpiracao() {
   const d = new Date();
-  d.setHours(d.getHours() + TOKEN_HORAS);
+  d.setTime(d.getTime() + TOKEN_HORAS * 3600000);
   return d;
 }
 

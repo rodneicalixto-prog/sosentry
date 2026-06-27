@@ -63,12 +63,14 @@ exports.testar = async (req, res, next) => {
   try {
     const wh = await prisma.webhook.findUnique({ where: { id: req.params.id } });
     if (!wh) return res.status(404).json({ error: 'Webhook não encontrado' });
+    if (!wh.ativo) return res.status(400).json({ error: 'Webhook está inativo' });
     if (!wh.eventos.length) return res.status(400).json({ error: 'Webhook sem eventos configurados' });
-    const evento = wh.eventos[0]
-    await disparar(evento, {
+    // Dispara diretamente para este webhook específico — não usa disparar() para não notificar outros
+    const { default: webhookSvc } = await Promise.resolve({ default: require('../services/webhook.service') });
+    await webhookSvc.dispararParaWebhook(wh, wh.eventos[0], {
       _teste: true, protocolo: 'PRT1-TEST-0000', nomeMotorista: 'Motorista Teste',
       placa: 'TST-0000', empresa: 'Empresa Teste', status: 'na_empresa'
     });
-    res.json({ ok: true, mensagem: `Evento '${evento}' disparado` });
+    res.json({ ok: true, mensagem: `Evento '${wh.eventos[0]}' disparado para ${wh.nome}` });
   } catch (e) { next(e); }
 };
