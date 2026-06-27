@@ -6,6 +6,9 @@ router.use(auth.authenticate, auth.requireRole('admin'));
 
 router.get('/evo',          ctrl.getConfiguracoes);
 router.post('/evo',         ctrl.salvarConfiguracoes);
+router.post('/smtp/teste',  ctrl.testarSMTP);
+router.get('/:chave',       ctrl.getChave);
+router.post('/:chave',      ctrl.setChave);
 router.get('/setores',      ctrl.listarSetores);
 router.post('/setores',     ctrl.criarSetor);
 router.patch('/setores/:id',  ctrl.atualizarSetor);

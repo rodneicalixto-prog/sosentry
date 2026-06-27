@@ -83,6 +83,7 @@ app.use('/api/ocorrencias',   require('./routes/ocorrencia.routes'));
 app.use('/api/contatos-notificacao', require('./routes/contato.routes'));
 app.use('/api/universidade',  require('./routes/universidade.routes'));
 app.use('/api/agendamentos',  require('./routes/agendamento.routes'));
+app.use('/api/empresas',      require('./routes/empresa.routes'));
 app.use('/api/publico/agendamento', require('./routes/agendamentoPublico.routes'));
 app.use('/api/api-keys',      require('./routes/apikey.routes'));
 app.use('/api/agendamentos-dash', (() => {

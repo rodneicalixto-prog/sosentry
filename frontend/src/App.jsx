@@ -28,6 +28,7 @@ import Agendamentos from './pages/admin/Agendamentos'
 import NovoAgendamento from './pages/admin/NovoAgendamento'
 import AgendamentoDetalhe from './pages/admin/AgendamentoDetalhe'
 import AgendamentosDash from './pages/admin/AgendamentosDash'
+import Empresas from './pages/admin/Empresas'
 import FormularioPublico from './pages/publico/FormularioPublico'
 import ValidarQR from './pages/ValidarQR'
 
@@ -111,6 +112,14 @@ export default function App() {
               }
             />
 
+            <Route
+              path="/admin/empresas"
+              element={
+                <ProtectedRoute minRole="admin">
+                  <Empresas />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/admin/relatorios"
               element={

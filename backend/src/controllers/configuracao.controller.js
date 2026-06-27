@@ -28,6 +28,43 @@ exports.salvarConfiguracoes = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
+// ─── Configurações genéricas por chave ───────────────────────────────────────
+
+const CHAVES_PERMITIDAS = [
+  'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from',
+]
+
+exports.getChave = async (req, res, next) => {
+  try {
+    const { chave } = req.params
+    if (!CHAVES_PERMITIDAS.includes(chave)) return res.status(400).json({ error: 'Chave inválida' })
+    const valor = await cfgSvc.get(chave) || ''
+    const safe = chave === 'smtp_pass' && valor ? '********' : valor
+    res.json({ chave, valor: safe })
+  } catch (e) { next(e) }
+}
+
+exports.setChave = async (req, res, next) => {
+  try {
+    const { chave } = req.params
+    if (!CHAVES_PERMITIDAS.includes(chave)) return res.status(400).json({ error: 'Chave inválida' })
+    const { valor } = req.body
+    if (chave === 'smtp_pass' && valor === '********') return res.json({ ok: true })
+    await cfgSvc.set(chave, String(valor || '').trim())
+    res.json({ ok: true })
+  } catch (e) { next(e) }
+}
+
+exports.testarSMTP = async (req, res, next) => {
+  try {
+    const { destinatario } = req.body
+    if (!destinatario) return res.status(400).json({ error: 'Destinatário obrigatório' })
+    const emailSvc = require('../services/email.service')
+    await emailSvc.enviarTeste(destinatario)
+    res.json({ ok: true })
+  } catch (e) { next(e) }
+}
+
 // ─── Notificações por Setor ───────────────────────────────────────────────────
 
 exports.listarSetores = async (req, res, next) => {

@@ -272,6 +272,9 @@ model Agendamento {
   portariaId      String            @map("portaria_id")
   portaria        Portaria          @relation(fields: [portariaId], references: [id])
 
+  empresaId       String?           @map("empresa_id")
+  empresaCad      Empresa?          @relation("AgendamentoEmpresaId", fields: [empresaId], references: [id])
+
   criadoEm        DateTime          @default(now()) @map("criado_em")
   atualizadoEm    DateTime          @updatedAt @map("atualizado_em")
 
@@ -279,6 +282,23 @@ model Agendamento {
   @@index([token])
   @@index([criadoPorId])
   @@map("agendamentos")
+}
+
+model Empresa {
+  id          String   @id @default(uuid())
+  nome        String
+  cnpj        String?
+  email       String
+  whatsapp    String
+  contato     String?
+  observacoes String?
+  ativo       Boolean  @default(true)
+  criadoEm    DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  agendamentos Agendamento[] @relation("AgendamentoEmpresaId")
+
+  @@map("empresas")
 }
 
 model VideoUniversidade {

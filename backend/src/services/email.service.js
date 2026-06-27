@@ -196,8 +196,22 @@ async function enviarLinkAgendamento(emailDestino, link, agendamento) {
   });
 }
 
+async function enviarTeste(destinatario) {
+  _transport = null; // força reinicialização com configs atuais
+  const t = await getTransport();
+  if (!t) throw new Error('SMTP não configurado. Configure os dados de e-mail primeiro.');
+  await t.sendMail({
+    from: t._from,
+    to: destinatario,
+    subject: 'SOS Entry — Teste de e-mail',
+    html: '<p>Este é um e-mail de teste enviado pelo painel de Configurações do <strong>SOS Entry</strong>.</p><p>Se você recebeu esta mensagem, o SMTP está configurado corretamente.</p>',
+    text: 'Este é um e-mail de teste do SOS Entry. SMTP configurado com sucesso.',
+  });
+}
+
 module.exports = {
   send,
+  enviarTeste,
   enviarAgendamentoNFRecebida,
   enviarAgendamentoAprovado,
   enviarAgendamentoChegada,

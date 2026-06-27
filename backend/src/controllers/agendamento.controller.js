@@ -85,12 +85,22 @@ exports.listar = async (req, res, next) => {
 
 exports.criar = async (req, res, next) => {
   try {
-    const { portariaId, departamento, pedidoInterno, observacoes, emailDestino, whatsappDestino } = req.body;
+    const { portariaId, departamento, pedidoInterno, observacoes, emailDestino, whatsappDestino, empresaId } = req.body;
     if (!portariaId) return res.status(400).json({ error: 'portariaId obrigatório' });
     if (!departamento) return res.status(400).json({ error: 'departamento obrigatório' });
 
     const portaria = await prisma.portaria.findUnique({ where: { id: portariaId } });
     if (!portaria) return res.status(404).json({ error: 'Portaria não encontrada' });
+
+    // Se empresaId fornecido, buscar email/whatsapp cadastrados como fallback
+    let emailEfetivo = emailDestino, waEfetivo = whatsappDestino;
+    if (empresaId && (!emailEfetivo || !waEfetivo)) {
+      const emp = await prisma.empresa.findUnique({ where: { id: empresaId } }).catch(() => null);
+      if (emp) {
+        if (!emailEfetivo) emailEfetivo = emp.email;
+        if (!waEfetivo)    waEfetivo    = emp.whatsapp;
+      }
+    }
 
     const agendamento = await prisma.agendamento.create({
       data: {
@@ -101,6 +111,7 @@ exports.criar = async (req, res, next) => {
         departamento,
         pedidoInterno: pedidoInterno || null,
         observacoes: observacoes || null,
+        empresaId: empresaId || null,
       },
       include: { portaria: { select: { nome: true } } },
     });
@@ -108,12 +119,12 @@ exports.criar = async (req, res, next) => {
     const link = `${process.env.FRONTEND_URL}/agendamento/${agendamento.token}`;
 
     // Enviar link para empresa externa via e-mail e/ou WhatsApp
-    if (emailDestino && /\S+@\S+\.\S+/.test(emailDestino)) {
-      emailSvc.enviarLinkAgendamento(emailDestino, link, agendamento)
+    if (emailEfetivo && /\S+@\S+\.\S+/.test(emailEfetivo)) {
+      emailSvc.enviarLinkAgendamento(emailEfetivo, link, agendamento)
         .catch(e => console.error('[email] link agendamento:', e.message));
     }
-    if (whatsappDestino) {
-      evo.enviarLinkAgendamento(whatsappDestino, link, agendamento)
+    if (waEfetivo) {
+      evo.enviarLinkAgendamento(waEfetivo, link, agendamento)
         .catch(e => console.error('[evo] link agendamento:', e.message));
     }
 
