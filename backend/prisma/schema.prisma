@@ -54,6 +54,8 @@ model User {
   auditLogs    AuditLog[]
   ocorrencias  Ocorrencia[]
   videosUniversidade VideoUniversidade[]
+  agendamentosCriados   Agendamento[] @relation("AgendamentoCriador")
+  agendamentosAprovados Agendamento[] @relation("AgendamentoAprovador")
   @@map("users")
 }
 model Session {
@@ -73,7 +75,8 @@ model Portaria {
   tipo      TipoPortaria
   ativo     Boolean      @default(true)
   createdAt DateTime     @default(now()) @map("created_at")
-  registros Registro[]
+  registros    Registro[]
+  agendamentos Agendamento[]
   @@map("portarias")
 }
 model Registro {
@@ -210,6 +213,57 @@ model NotificacaoSetor {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
   @@map("notificacoes_setor")
+}
+
+enum AgendamentoStatus {
+  AGUARDANDO_NF
+  NF_RECEBIDA
+  APROVADO
+  NA_PORTARIA
+  CONCLUIDO
+  CANCELADO
+}
+
+model Agendamento {
+  id              String            @id @default(uuid())
+  token           String            @unique @default(uuid())
+  tokenExpiraEm   DateTime          @map("token_expira_em")
+  status          AgendamentoStatus @default(AGUARDANDO_NF)
+
+  criadoPorId     String            @map("criado_por_id")
+  criadoPor       User              @relation("AgendamentoCriador", fields: [criadoPorId], references: [id])
+  departamento    String
+  pedidoInterno   String?           @map("pedido_interno")
+
+  empresa         String?
+  cnpj            String?
+  motorista       String?
+  cpfMotorista    String?           @map("cpf_motorista")
+  placa           String?
+  tipoVeiculo     String?           @map("tipo_veiculo")
+  numeroNF        String?           @map("numero_nf")
+  valorNF         Decimal?          @map("valor_nf") @db.Decimal(15, 2)
+  nfArquivoUrl    String?           @map("nf_arquivo_url")
+  dataEntrega     DateTime?         @map("data_entrega")
+  horarioPref     String?           @map("horario_pref")
+  observacoes     String?
+
+  aprovadoPorId   String?           @map("aprovado_por_id")
+  aprovadoPor     User?             @relation("AgendamentoAprovador", fields: [aprovadoPorId], references: [id])
+  aprovadoEm      DateTime?         @map("aprovado_em")
+  chegadaEm       DateTime?         @map("chegada_em")
+  registroId      String?           @map("registro_id")
+
+  portariaId      String            @map("portaria_id")
+  portaria        Portaria          @relation(fields: [portariaId], references: [id])
+
+  criadoEm        DateTime          @default(now()) @map("criado_em")
+  atualizadoEm    DateTime          @updatedAt @map("atualizado_em")
+
+  @@index([status])
+  @@index([token])
+  @@index([criadoPorId])
+  @@map("agendamentos")
 }
 
 model VideoUniversidade {

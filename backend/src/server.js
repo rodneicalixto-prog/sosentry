@@ -82,6 +82,11 @@ app.use('/api/configuracoes', require('./routes/configuracao.routes'));
 app.use('/api/ocorrencias',   require('./routes/ocorrencia.routes'));
 app.use('/api/contatos-notificacao', require('./routes/contato.routes'));
 app.use('/api/universidade',  require('./routes/universidade.routes'));
+app.use('/api/agendamentos',  require('./routes/agendamento.routes'));
+app.use('/api/publico/agendamento', require('./routes/agendamentoPublico.routes'));
+
+// Servir uploads de NF (acesso restrito via rota autenticada no frontend)
+app.use('/uploads', require('express').static('/app/uploads'));
 
 app.get('/health', async (_, res) => {
   try {

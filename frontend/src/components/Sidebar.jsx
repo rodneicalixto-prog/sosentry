@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   KeyRound,
   GraduationCap,
+  Truck,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import AlterarSenhaModal from './AlterarSenhaModal'
@@ -29,6 +30,7 @@ const NAV = [
 ]
 
 const ADMIN_NAV = [
+  { to: '/admin/agendamentos',  label: 'Agendamentos',  icon: Truck,     minRole: 'supervisor' },
   { to: '/admin/relatorios',    label: 'Relatórios',    icon: BarChart2, minRole: 'admin' },
   { to: '/admin/usuarios',      label: 'Usuários',      icon: Users,     minRole: 'admin' },
   { to: '/admin/webhooks',      label: 'Webhooks',      icon: Webhook,   minRole: 'admin' },
