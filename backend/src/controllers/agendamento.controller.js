@@ -5,14 +5,7 @@ const webhookSvc = require('../services/webhook.service');
 const qrSvc = require('../services/qrcode.service');
 const evo = require('../services/evolution.service');
 const emailSvc = require('../services/email.service');
-
-async function telefonesNotificados() {
-  const usuarios = await prisma.user.findMany({
-    where: { ativo: true, recebeWhatsapp: true, telefone: { not: null } },
-    select: { telefone: true },
-  });
-  return [...new Set(usuarios.map(u => u.telefone))];
-}
+const { telefonesNotificados } = require('../helpers/notificacao.helper');
 
 const TOKEN_HORAS = 72;
 

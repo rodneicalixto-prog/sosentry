@@ -5,14 +5,7 @@ const webhookSvc = require('../services/webhook.service');
 const qrSvc = require('../services/qrcode.service');
 const evo = require('../services/evolution.service');
 const emailSvc = require('../services/email.service');
-
-async function telefonesNotificados() {
-  const usuarios = await prisma.user.findMany({
-    where: { ativo: true, recebeWhatsapp: true, telefone: { not: null } },
-    select: { telefone: true },
-  });
-  return [...new Set(usuarios.map(u => u.telefone))];
-}
+const { telefonesNotificados } = require('../helpers/notificacao.helper');
 
 // ─── Buscar agendamento pelo token (público) ──────────────────────────────────
 
@@ -41,11 +34,15 @@ exports.buscar = async (req, res, next) => {
 
 exports.submeter = async (req, res, next) => {
   try {
-    const ag = await prisma.agendamento.findUnique({ where: { token: req.params.token } });
-    if (!ag) return res.status(404).json({ error: 'Link inválido ou expirado' });
-    if (new Date() > ag.tokenExpiraEm)
+    // Valida token e expiração antes de ler o body
+    const agCheck = await prisma.agendamento.findUnique({
+      where: { token: req.params.token },
+      select: { id: true, tokenExpiraEm: true, status: true },
+    });
+    if (!agCheck) return res.status(404).json({ error: 'Link inválido ou expirado' });
+    if (new Date() > agCheck.tokenExpiraEm)
       return res.status(410).json({ error: 'Link expirado. Solicite um novo link ao responsável.' });
-    if (ag.status !== 'AGUARDANDO_NF')
+    if (agCheck.status !== 'AGUARDANDO_NF')
       return res.status(409).json({ error: 'Este link já foi utilizado.' });
 
     const { empresa, cnpj, motorista, cpfMotorista, placa, tipoVeiculo,
@@ -68,8 +65,9 @@ exports.submeter = async (req, res, next) => {
       ? `/uploads/nf/${req.file.filename}`
       : null;
 
-    const updated = await prisma.agendamento.update({
-      where: { id: ag.id },
+    // updateMany com status como condição — evita race condition entre requests concorrentes
+    const { count } = await prisma.agendamento.updateMany({
+      where: { id: agCheck.id, status: 'AGUARDANDO_NF' },
       data: {
         status: 'NF_RECEBIDA',
         empresa, cnpj: cnpj || null, motorista, cpfMotorista,
@@ -81,6 +79,13 @@ exports.submeter = async (req, res, next) => {
         horarioPref,
         observacoes: observacoes || null,
       },
+    });
+
+    if (count === 0)
+      return res.status(409).json({ error: 'Este link já foi utilizado.' });
+
+    const updated = await prisma.agendamento.findUnique({
+      where: { id: agCheck.id },
       include: { portaria: { select: { nome: true } } },
     });
 

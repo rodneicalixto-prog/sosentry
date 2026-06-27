@@ -11,14 +11,7 @@ const evo = require('../services/evolution.service');
 const emailSvc = require('../services/email.service');
 
 const TOKEN_HORAS = 72;
-
-async function telefonesNotificados() {
-  const usuarios = await prisma.user.findMany({
-    where: { ativo: true, recebeWhatsapp: true, telefone: { not: null } },
-    select: { telefone: true },
-  });
-  return [...new Set(usuarios.map(u => u.telefone))];
-}
+const { telefonesNotificados } = require('../helpers/notificacao.helper');
 
 // ─── GET /api/v1/agendamentos ─────────────────────────────────────────────────
 
@@ -62,7 +55,7 @@ exports.buscar = async (req, res, next) => {
     const ag = await prisma.agendamento.findUnique({
       where: { id: req.params.id },
       select: {
-        id: true, status: true, token: true, tokenExpiraEm: true,
+        id: true, status: true, tokenExpiraEm: true,
         departamento: true, pedidoInterno: true,
         empresa: true, cnpj: true, motorista: true, cpfMotorista: true,
         placa: true, tipoVeiculo: true, numeroNF: true, valorNF: true,

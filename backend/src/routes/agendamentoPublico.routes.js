@@ -13,13 +13,21 @@ const storage = multer.diskStorage({
   },
 });
 
+const MIME_PERMITIDOS = [
+  'application/pdf',
+  'text/xml', 'application/xml',
+  'image/jpeg', 'image/png',
+];
+const EXT_PERMITIDAS = ['.pdf', '.xml', '.jpg', '.jpeg', '.png'];
+
 const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
   fileFilter: (req, file, cb) => {
-    const allowed = ['.pdf', '.xml', '.jpg', '.jpeg', '.png'];
     const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) cb(null, true);
+    const mimeOk = MIME_PERMITIDOS.includes(file.mimetype);
+    const extOk  = EXT_PERMITIDAS.includes(ext);
+    if (mimeOk && extOk) cb(null, true);
     else cb(new Error('Tipo de arquivo não permitido (PDF, XML, JPG, PNG)'));
   },
 });
