@@ -214,10 +214,16 @@ function AbaConexaoQR() {
 
 // ─── Aba 3: Notificações por Setor ───────────────────────────────────────────
 
-const SETOR_VAZIO = { nome: '', telefone: '', criterioTipo: 'tipoOperacao', criterioValor: '', eventos: ['entrada'] }
+const SETOR_EVENTOS = [
+  { key: 'entrada',           label: 'Entrada de veículo' },
+  { key: 'saida',             label: 'Saída de veículo' },
+  { key: 'nf_nao_programada', label: 'NF sem agendamento (Faturamento)' },
+]
+
+const SETOR_VAZIO = { nome: '', telefone: '', email: '', criterioTipo: 'tipoOperacao', criterioValor: '', eventos: ['entrada'] }
 
 function SetorForm({ inicial, onSalvar, onCancelar }) {
-  const [form, setForm] = useState(inicial || SETOR_VAZIO)
+  const [form, setForm] = useState(inicial ? { email: '', ...inicial } : SETOR_VAZIO)
   function toggleEvento(ev) {
     setForm(f => ({ ...f, eventos: f.eventos.includes(ev) ? f.eventos.filter(e => e !== ev) : [...f.eventos, ev] }))
   }
@@ -227,13 +233,18 @@ function SetorForm({ inicial, onSalvar, onCancelar }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Setor</label>
-          <input className={input} placeholder="ex: Logística, Recebimento…"
+          <input className={input} placeholder="ex: Faturamento, Logística…"
             value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp (com DDI+DDD)</label>
           <input className={input} placeholder="5511999999999"
             value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">E-mail do setor <span className="text-gray-400 font-normal">(para alertas)</span></label>
+          <input className={input} type="email" placeholder="faturamento@empresa.com.br"
+            value={form.email || ''} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Critério</label>
@@ -251,11 +262,11 @@ function SetorForm({ inicial, onSalvar, onCancelar }) {
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Notificar em</label>
-        <div className="flex gap-3">
-          {['entrada', 'saida'].map(ev => (
-            <label key={ev} className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.eventos.includes(ev)} onChange={() => toggleEvento(ev)} className="w-4 h-4 rounded text-blue-600" />
-              <span className="text-sm">{ev === 'entrada' ? 'Entrada' : 'Saída'}</span>
+        <div className="flex flex-wrap gap-3">
+          {SETOR_EVENTOS.map(ev => (
+            <label key={ev.key} className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={form.eventos.includes(ev.key)} onChange={() => toggleEvento(ev.key)} className="w-4 h-4 rounded text-blue-600" />
+              <span className="text-sm">{ev.label}</span>
             </label>
           ))}
         </div>
@@ -339,16 +350,17 @@ function AbaSetores() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                     {s.ativo ? 'Ativo' : 'Inativo'}
                   </span>
-                  {s.eventos.map(ev => (
-                    <span key={ev} className={`text-xs px-2 py-0.5 rounded-full font-medium ${ev === 'entrada' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                      {ev === 'entrada' ? 'Entrada' : 'Saída'}
-                    </span>
-                  ))}
+                  {s.eventos.map(ev => {
+                    const evCfg = SETOR_EVENTOS.find(e => e.key === ev)
+                    const cor = ev === 'entrada' ? 'bg-blue-100 text-blue-700' : ev === 'nf_nao_programada' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                    return <span key={ev} className={`text-xs px-2 py-0.5 rounded-full font-medium ${cor}`}>{evCfg?.label || ev}</span>
+                  })}
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
                   <span className="font-medium text-gray-600">{labelCriterio(s.criterioTipo)}:</span>{' '}
                   <code className="bg-gray-100 px-1 rounded text-xs">{s.criterioValor === '*' ? 'qualquer' : s.criterioValor}</code>
                   {' · '}📱 {s.telefone}
+                  {s.email && <>{' · '}✉️ {s.email}</>}
                 </p>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">

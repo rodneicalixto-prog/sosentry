@@ -76,7 +76,7 @@ exports.listarSetores = async (req, res, next) => {
 
 exports.criarSetor = async (req, res, next) => {
   try {
-    const { nome, telefone, criterioTipo, criterioValor, eventos } = req.body;
+    const { nome, telefone, email, criterioTipo, criterioValor, eventos } = req.body;
     if (!nome?.trim())          return res.status(400).json({ error: 'Nome obrigatório' });
     if (!telefone?.trim())      return res.status(400).json({ error: 'Telefone obrigatório' });
     if (!criterioTipo?.trim())  return res.status(400).json({ error: 'Tipo de critério obrigatório' });
@@ -88,6 +88,7 @@ exports.criarSetor = async (req, res, next) => {
       data: {
         nome: nome.trim(),
         telefone: telefone.replace(/\D/g, ''),
+        email: email?.trim() || null,
         criterioTipo: criterioTipo.trim(),
         criterioValor: criterioValor.trim().toLowerCase(),
         eventos,
@@ -101,10 +102,11 @@ exports.criarSetor = async (req, res, next) => {
 exports.atualizarSetor = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { nome, telefone, criterioTipo, criterioValor, eventos, ativo } = req.body;
+    const { nome, telefone, email, criterioTipo, criterioValor, eventos, ativo } = req.body;
     const data = {};
     if (nome          !== undefined) data.nome          = nome.trim();
     if (telefone      !== undefined) data.telefone      = telefone.replace(/\D/g, '');
+    if (email         !== undefined) data.email         = email?.trim() || null;
     if (criterioTipo  !== undefined) data.criterioTipo  = criterioTipo.trim();
     if (criterioValor !== undefined) data.criterioValor = criterioValor.trim().toLowerCase();
     if (eventos       !== undefined) data.eventos       = eventos;

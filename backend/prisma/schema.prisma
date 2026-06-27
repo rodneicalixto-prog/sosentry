@@ -207,6 +207,7 @@ model NotificacaoSetor {
   id            String   @id @default(uuid())
   nome          String
   telefone      String
+  email         String?
   criterioTipo  String   @map("criterio_tipo")
   criterioValor String   @map("criterio_valor")
   eventos       String[]

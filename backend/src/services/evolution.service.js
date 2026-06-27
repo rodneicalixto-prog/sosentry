@@ -178,7 +178,9 @@ async function enviarQRCodeMotorista(numero, ag, qrBase64) {
 }
 
 module.exports = {
-  send, enviarEntrada, enviarSaida, enviarSetor, enviarOcorrencia,
+  send,
+  enviarMensagem: send,
+  enviarEntrada, enviarSaida, enviarSetor, enviarOcorrencia,
   enviarAgendamentoNFRecebida, enviarAgendamentoAprovado, enviarAgendamentoChegada,
   enviarLinkAgendamento, enviarQRCodeMotorista,
 };
