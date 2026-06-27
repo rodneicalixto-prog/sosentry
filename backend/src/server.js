@@ -84,6 +84,15 @@ app.use('/api/contatos-notificacao', require('./routes/contato.routes'));
 app.use('/api/universidade',  require('./routes/universidade.routes'));
 app.use('/api/agendamentos',  require('./routes/agendamento.routes'));
 app.use('/api/publico/agendamento', require('./routes/agendamentoPublico.routes'));
+app.use('/api/api-keys',      require('./routes/apikey.routes'));
+app.use('/api/agendamentos-dash', (() => {
+  const r = require('express').Router();
+  const { authenticate, requireRole } = require('./middleware/auth.middleware');
+  const c = require('./controllers/agendamentoDash.controller');
+  r.get('/resumo', authenticate, requireRole('supervisor'), c.resumo);
+  return r;
+})());
+app.use('/api/v1/agendamentos', require('./routes/integracaoExterna.routes'));
 
 // Servir uploads de NF (acesso restrito via rota autenticada no frontend)
 app.use('/uploads', require('express').static('/app/uploads'));

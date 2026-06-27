@@ -107,4 +107,78 @@ async function enviarOcorrencia(oc) {
   await Promise.allSettled(tasks);
 }
 
-module.exports = { send, enviarEntrada, enviarSaida, enviarSetor, enviarOcorrencia };
+function fmtData(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const p = n => String(n).padStart(2, '0');
+  return `${p(d.getUTCDate())}/${p(d.getUTCMonth()+1)}/${d.getUTCFullYear()}`;
+}
+
+async function enviarAgendamentoNFRecebida(ag, destinos) {
+  const msg =
+    `📦 *SOS Entry — NF Recebida*\n\n` +
+    `🏢 Empresa: *${ag.empresa || '—'}*\n` +
+    `📄 NF: ${ag.numeroNF || '—'}\n` +
+    `🚛 Placa: ${ag.placa || '—'}\n` +
+    `👤 Motorista: ${ag.motorista || '—'}\n` +
+    `📅 Previsão: ${fmtData(ag.dataEntrega)} às ${ag.horarioPref || '—'}\n` +
+    `🏗️ Portaria: ${ag.portaria?.nome || '—'}\n` +
+    `\n⚠️ Aguardando aprovação interna.`;
+  await Promise.allSettled(destinos.map(n => send(n, msg).catch(e => console.error(`[evo] ag nf: ${e.message}`))));
+}
+
+async function enviarAgendamentoAprovado(ag, destinos) {
+  const msg =
+    `✅ *SOS Entry — Entrega APROVADA*\n\n` +
+    `🏢 Empresa: *${ag.empresa || '—'}*\n` +
+    `📄 NF: ${ag.numeroNF || '—'}\n` +
+    `🚛 Placa: ${ag.placa || '—'}\n` +
+    `📅 Data prevista: ${fmtData(ag.dataEntrega)} às ${ag.horarioPref || '—'}\n` +
+    `🏗️ Portaria: ${ag.portaria?.nome || '—'}\n` +
+    `\n🔓 A entrada está liberada. A portaria será notificada na chegada.`;
+  await Promise.allSettled(destinos.map(n => send(n, msg).catch(e => console.error(`[evo] ag aprovado: ${e.message}`))));
+}
+
+async function enviarAgendamentoChegada(ag, destinos) {
+  const msg =
+    `🚛 *SOS Entry — CAMINHÃO NA PORTARIA*\n\n` +
+    `🏢 Empresa: *${ag.empresa || '—'}*\n` +
+    `👤 Motorista: ${ag.motorista || '—'}\n` +
+    `🚗 Placa: ${ag.placa || '—'}\n` +
+    `📄 NF: ${ag.numeroNF || '—'}\n` +
+    `🏗️ Portaria: ${ag.portaria?.nome || '—'}\n` +
+    `⏰ Chegada: ${fmtDataHora(ag.chegadaEm).hora} · ${fmtDataHora(ag.chegadaEm).data}\n` +
+    `\n⚡ Aguardando liberação da doca.`;
+  await Promise.allSettled(destinos.map(n => send(n, msg).catch(e => console.error(`[evo] ag chegada: ${e.message}`))));
+}
+
+async function enviarLinkAgendamento(numero, link, ag) {
+  const msg =
+    `📦 *Agendamento de Entrega — SOS Entry*\n\n` +
+    `Olá! Você recebeu um link para preencher os dados de entrega.\n\n` +
+    (ag.pedidoInterno ? `📋 Pedido: *${ag.pedidoInterno}*\n` : '') +
+    `🏢 Departamento: ${ag.departamento}\n\n` +
+    `🔗 *Acesse o link para preencher:*\n${link}\n\n` +
+    `⚠️ Este link expira em 72 horas. Após preencher, um QR Code será gerado para a portaria.`;
+  await send(numero, msg).catch(e => console.error('[evo] link agendamento:', e.message));
+}
+
+async function enviarQRCodeMotorista(numero, ag, qrBase64) {
+  // Envia mensagem de texto com dados — envio de imagem requer outro endpoint da Evolution API
+  const msg =
+    `🚛 *SOS Entry — QR Code de Entrada*\n\n` +
+    `Seu agendamento foi recebido com sucesso!\n\n` +
+    `🏢 Empresa: ${ag.empresa}\n` +
+    `📄 NF: ${ag.numeroNF}\n` +
+    `📅 Data prevista: ${fmtData(ag.dataEntrega)} às ${ag.horarioPref || '—'}\n\n` +
+    `Na chegada à portaria, apresente o QR Code. Você pode acessá-lo em:\n` +
+    `${process.env.FRONTEND_URL || ''}/agendamento/${ag.token}/qr\n\n` +
+    `⚡ A portaria e os setores serão notificados automaticamente.`;
+  await send(numero, msg).catch(e => console.error('[evo] qr motorista:', e.message));
+}
+
+module.exports = {
+  send, enviarEntrada, enviarSaida, enviarSetor, enviarOcorrencia,
+  enviarAgendamentoNFRecebida, enviarAgendamentoAprovado, enviarAgendamentoChegada,
+  enviarLinkAgendamento, enviarQRCodeMotorista,
+};

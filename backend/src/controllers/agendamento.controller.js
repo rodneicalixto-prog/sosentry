@@ -3,6 +3,16 @@ const prisma = require('../lib/prisma');
 const sseSvc = require('../services/sse.service');
 const webhookSvc = require('../services/webhook.service');
 const qrSvc = require('../services/qrcode.service');
+const evo = require('../services/evolution.service');
+const emailSvc = require('../services/email.service');
+
+async function telefonesNotificados() {
+  const usuarios = await prisma.user.findMany({
+    where: { ativo: true, recebeWhatsapp: true, telefone: { not: null } },
+    select: { telefone: true },
+  });
+  return [...new Set(usuarios.map(u => u.telefone))];
+}
 
 const TOKEN_HORAS = 72;
 
@@ -75,7 +85,7 @@ exports.listar = async (req, res, next) => {
 
 exports.criar = async (req, res, next) => {
   try {
-    const { portariaId, departamento, pedidoInterno, observacoes } = req.body;
+    const { portariaId, departamento, pedidoInterno, observacoes, emailDestino, whatsappDestino } = req.body;
     if (!portariaId) return res.status(400).json({ error: 'portariaId obrigatório' });
     if (!departamento) return res.status(400).json({ error: 'departamento obrigatório' });
 
@@ -96,6 +106,17 @@ exports.criar = async (req, res, next) => {
     });
 
     const link = `${process.env.FRONTEND_URL}/agendamento/${agendamento.token}`;
+
+    // Enviar link para empresa externa via e-mail e/ou WhatsApp
+    if (emailDestino && /\S+@\S+\.\S+/.test(emailDestino)) {
+      emailSvc.enviarLinkAgendamento(emailDestino, link, agendamento)
+        .catch(e => console.error('[email] link agendamento:', e.message));
+    }
+    if (whatsappDestino) {
+      evo.enviarLinkAgendamento(whatsappDestino, link, agendamento)
+        .catch(e => console.error('[evo] link agendamento:', e.message));
+    }
+
     res.status(201).json({ agendamento, link });
   } catch (e) { next(e); }
 };
@@ -151,6 +172,8 @@ exports.aprovar = async (req, res, next) => {
       placa: updated.placa, dataEntrega: updated.dataEntrega, portaria: updated.portaria?.nome,
     });
     webhookSvc.disparar('agendamento.aprovado', updated).catch(() => {});
+    telefonesNotificados().then(nums => evo.enviarAgendamentoAprovado(updated, nums)).catch(() => {});
+    emailSvc.enviarAgendamentoAprovado(updated).catch(() => {});
 
     res.json(updated);
   } catch (e) { next(e); }
@@ -199,6 +222,8 @@ exports.validarQR = async (req, res, next) => {
       placa: updated.placa, portaria: updated.portaria?.nome, chegadaEm: updated.chegadaEm,
     });
     webhookSvc.disparar('agendamento.chegada_portaria', updated).catch(() => {});
+    telefonesNotificados().then(nums => evo.enviarAgendamentoChegada(updated, nums)).catch(() => {});
+    emailSvc.enviarAgendamentoChegada(updated).catch(() => {});
 
     res.json(updated);
   } catch (e) { next(e); }

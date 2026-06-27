@@ -17,6 +17,7 @@ export default function FormularioPublico() {
     empresa: '', cnpj: '', motorista: '', cpfMotorista: '',
     placa: '', tipoVeiculo: '', numeroNF: '', valorNF: '',
     dataEntrega: '', horarioPref: '', observacoes: '',
+    emailEmpresa: '', emailMotorista: '', telefoneMotorista: '',
   })
 
   useEffect(() => {
@@ -141,6 +142,18 @@ export default function FormularioPublico() {
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
+                <label className="block text-sm text-gray-600 mb-1">WhatsApp do Motorista</label>
+                <input name="telefoneMotorista" value={form.telefoneMotorista} onChange={handle} placeholder="(11) 99999-9999"
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <p className="text-xs text-gray-400 mt-1">QR Code enviado via WhatsApp</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">E-mail do Motorista</label>
+                <input name="emailMotorista" value={form.emailMotorista} onChange={handle} type="email" placeholder="motorista@email.com"
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <p className="text-xs text-gray-400 mt-1">QR Code enviado por e-mail</p>
+              </div>
+              <div>
                 <label className="block text-sm text-gray-600 mb-1">Placa *</label>
                 <input name="placa" value={form.placa} onChange={handle} required placeholder="ABC-1234"
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase" />
@@ -167,6 +180,11 @@ export default function FormularioPublico() {
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Valor da NF (R$)</label>
                 <input name="valorNF" value={form.valorNF} onChange={handle} type="number" step="0.01" min="0" placeholder="0,00"
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">E-mail da empresa (para receber o QR)</label>
+                <input name="emailEmpresa" value={form.emailEmpresa} onChange={handle} type="email" placeholder="compras@empresa.com"
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="sm:col-span-2">

@@ -3,6 +3,16 @@ const prisma = require('../lib/prisma');
 const sseSvc = require('../services/sse.service');
 const webhookSvc = require('../services/webhook.service');
 const qrSvc = require('../services/qrcode.service');
+const evo = require('../services/evolution.service');
+const emailSvc = require('../services/email.service');
+
+async function telefonesNotificados() {
+  const usuarios = await prisma.user.findMany({
+    where: { ativo: true, recebeWhatsapp: true, telefone: { not: null } },
+    select: { telefone: true },
+  });
+  return [...new Set(usuarios.map(u => u.telefone))];
+}
 
 // ─── Buscar agendamento pelo token (público) ──────────────────────────────────
 
@@ -39,7 +49,8 @@ exports.submeter = async (req, res, next) => {
       return res.status(409).json({ error: 'Este link já foi utilizado.' });
 
     const { empresa, cnpj, motorista, cpfMotorista, placa, tipoVeiculo,
-            numeroNF, valorNF, dataEntrega, horarioPref, observacoes } = req.body;
+            numeroNF, valorNF, dataEntrega, horarioPref, observacoes,
+            emailEmpresa, telefoneMotorista, emailMotorista } = req.body;
 
     if (!empresa)      return res.status(400).json({ error: 'empresa obrigatório' });
     if (!motorista)    return res.status(400).json({ error: 'motorista obrigatório' });
@@ -90,6 +101,17 @@ exports.submeter = async (req, res, next) => {
       horarioPref: updated.horarioPref, portaria: updated.portaria?.nome,
     });
     webhookSvc.disparar('agendamento.nf_recebida', updated).catch(() => {});
+    // Notificações internas (departamentos/setores)
+    telefonesNotificados().then(nums => evo.enviarAgendamentoNFRecebida(updated, nums)).catch(() => {});
+    emailSvc.enviarAgendamentoNFRecebida(updated).catch(() => {});
+
+    // QR Code para a empresa externa (e-mail e WhatsApp do motorista)
+    if (emailEmpresa && /\S+@\S+\.\S+/.test(emailEmpresa))
+      emailSvc.enviarQRCodeConfirmacao(emailEmpresa, updated, qrBase64).catch(() => {});
+    if (emailMotorista && /\S+@\S+\.\S+/.test(emailMotorista))
+      emailSvc.enviarQRCodeConfirmacao(emailMotorista, updated, qrBase64).catch(() => {});
+    if (telefoneMotorista)
+      evo.enviarQRCodeMotorista(telefoneMotorista, updated, qrBase64).catch(() => {});
 
     res.json({ agendamento: updated, qrCode: qrBase64 });
   } catch (e) { next(e); }

@@ -54,6 +54,7 @@ model User {
   auditLogs    AuditLog[]
   ocorrencias  Ocorrencia[]
   videosUniversidade VideoUniversidade[]
+  apiKeys               ApiKey[]
   agendamentosCriados   Agendamento[] @relation("AgendamentoCriador")
   agendamentosAprovados Agendamento[] @relation("AgendamentoAprovador")
   @@map("users")
@@ -213,6 +214,20 @@ model NotificacaoSetor {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
   @@map("notificacoes_setor")
+}
+
+model ApiKey {
+  id          String   @id @default(uuid())
+  nome        String
+  chave       String   @unique
+  descricao   String?
+  escopos     String[]
+  ativo       Boolean  @default(true)
+  ultimoUso   DateTime? @map("ultimo_uso")
+  criadoPorId String   @map("criado_por_id")
+  criadoPor   User     @relation(fields: [criadoPorId], references: [id])
+  criadoEm   DateTime  @default(now()) @map("criado_em")
+  @@map("api_keys")
 }
 
 enum AgendamentoStatus {

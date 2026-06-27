@@ -16,6 +16,8 @@ import {
   KeyRound,
   GraduationCap,
   Truck,
+  QrCode,
+  BarChart3,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import AlterarSenhaModal from './AlterarSenhaModal'
@@ -26,11 +28,13 @@ const NAV = [
   { to: '/registros/novo', label: 'Nova Entrada', icon: PlusCircle, minRole: 'operador', accent: true },
   { to: '/saida', label: 'Registrar Saída', icon: LogOutIcon, minRole: 'operador' },
   { to: '/ocorrencias', label: 'Ocorrências', icon: AlertTriangle, minRole: 'operador' },
+  { to: '/validar-qr', label: 'Validar QR', icon: QrCode, minRole: 'operador' },
   { to: '/universidade', label: 'Universidade', icon: GraduationCap, minRole: 'operador' },
 ]
 
 const ADMIN_NAV = [
-  { to: '/admin/agendamentos',  label: 'Agendamentos',  icon: Truck,     minRole: 'supervisor' },
+  { to: '/admin/agendamentos',      label: 'Agendamentos',   icon: Truck,     minRole: 'supervisor' },
+  { to: '/admin/agendamentos-dash', label: 'Dashboard Cargas',icon: BarChart3, minRole: 'supervisor' },
   { to: '/admin/relatorios',    label: 'Relatórios',    icon: BarChart2, minRole: 'admin' },
   { to: '/admin/usuarios',      label: 'Usuários',      icon: Users,     minRole: 'admin' },
   { to: '/admin/webhooks',      label: 'Webhooks',      icon: Webhook,   minRole: 'admin' },

@@ -5,7 +5,7 @@ import api from '../../api/client'
 export default function NovoAgendamento() {
   const nav = useNavigate()
   const [portarias, setPortarias] = useState([])
-  const [form, setForm] = useState({ portariaId: '', departamento: '', pedidoInterno: '', observacoes: '' })
+  const [form, setForm] = useState({ portariaId: '', departamento: '', pedidoInterno: '', observacoes: '', emailDestino: '', whatsappDestino: '' })
   const [salvando, setSalvando] = useState(false)
   const [linkGerado, setLinkGerado] = useState(null)
   const [copiado, setCopiado] = useState(false)
@@ -111,6 +111,24 @@ export default function NovoAgendamento() {
           <input name="pedidoInterno" value={form.pedidoInterno} onChange={handle}
             placeholder="Ex: PED-2026-001"
             className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            E-mail da empresa (envio automático do link)
+          </label>
+          <input name="emailDestino" value={form.emailDestino} onChange={handle} type="email"
+            placeholder="contato@empresa.com.br"
+            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <p className="text-xs text-gray-400 mt-1">Opcional — o link será enviado automaticamente por e-mail.</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            WhatsApp da empresa (envio automático do link)
+          </label>
+          <input name="whatsappDestino" value={form.whatsappDestino} onChange={handle} type="tel"
+            placeholder="(11) 99999-9999"
+            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <p className="text-xs text-gray-400 mt-1">Opcional — o link será enviado via WhatsApp.</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Observações para a empresa</label>

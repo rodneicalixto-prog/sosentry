@@ -27,7 +27,9 @@ import Universidade from './pages/Universidade'
 import Agendamentos from './pages/admin/Agendamentos'
 import NovoAgendamento from './pages/admin/NovoAgendamento'
 import AgendamentoDetalhe from './pages/admin/AgendamentoDetalhe'
+import AgendamentosDash from './pages/admin/AgendamentosDash'
 import FormularioPublico from './pages/publico/FormularioPublico'
+import ValidarQR from './pages/ValidarQR'
 
 function TrocaSenhaOverlay() {
   const { user, clearTrocaSenhaObrigatoria } = useAuth()
@@ -79,6 +81,7 @@ export default function App() {
             <Route path="/ocorrencias/nova"   element={<NovaOcorrencia />} />
             <Route path="/ocorrencias/:id"    element={<OcorrenciaDetalhe />} />
             <Route path="/universidade"       element={<Universidade />} />
+            <Route path="/validar-qr"         element={<ValidarQR />} />
             <Route
               path="/admin/agendamentos"
               element={
@@ -90,6 +93,14 @@ export default function App() {
             <Route
               path="/admin/agendamentos/novo"
               element={<NovoAgendamento />}
+            />
+            <Route
+              path="/admin/agendamentos-dash"
+              element={
+                <ProtectedRoute minRole="supervisor">
+                  <AgendamentosDash />
+                </ProtectedRoute>
+              }
             />
             <Route
               path="/admin/agendamentos/:id"
