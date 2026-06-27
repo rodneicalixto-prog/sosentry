@@ -24,6 +24,13 @@ import Ocorrencias from './pages/Ocorrencias'
 import NovaOcorrencia from './pages/NovaOcorrencia'
 import OcorrenciaDetalhe from './pages/OcorrenciaDetalhe'
 import Universidade from './pages/Universidade'
+import Agendamentos from './pages/admin/Agendamentos'
+import NovoAgendamento from './pages/admin/NovoAgendamento'
+import AgendamentoDetalhe from './pages/admin/AgendamentoDetalhe'
+import AgendamentosDash from './pages/admin/AgendamentosDash'
+import Empresas from './pages/admin/Empresas'
+import FormularioPublico from './pages/publico/FormularioPublico'
+import ValidarQR from './pages/ValidarQR'
 
 function TrocaSenhaOverlay() {
   const { user, clearTrocaSenhaObrigatoria } = useAuth()
@@ -38,6 +45,9 @@ export default function App() {
       <AuthProvider>
       <RealtimeProvider>
         <Routes>
+          {/* Rota pública — sem autenticação */}
+          <Route path="/agendamento/:token" element={<FormularioPublico />} />
+
           <Route path="/login" element={<Login />} />
           <Route path="/recuperar-senha" element={<ForgotPassword />} />
           <Route path="/redefinir-senha" element={<ResetPassword />} />
@@ -72,7 +82,44 @@ export default function App() {
             <Route path="/ocorrencias/nova"   element={<NovaOcorrencia />} />
             <Route path="/ocorrencias/:id"    element={<OcorrenciaDetalhe />} />
             <Route path="/universidade"       element={<Universidade />} />
+            <Route path="/validar-qr"         element={<ValidarQR />} />
+            <Route
+              path="/admin/agendamentos"
+              element={
+                <ProtectedRoute minRole="supervisor">
+                  <Agendamentos />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/agendamentos/novo"
+              element={<NovoAgendamento />}
+            />
+            <Route
+              path="/admin/agendamentos-dash"
+              element={
+                <ProtectedRoute minRole="supervisor">
+                  <AgendamentosDash />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/agendamentos/:id"
+              element={
+                <ProtectedRoute minRole="supervisor">
+                  <AgendamentoDetalhe />
+                </ProtectedRoute>
+              }
+            />
 
+            <Route
+              path="/admin/empresas"
+              element={
+                <ProtectedRoute minRole="admin">
+                  <Empresas />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/admin/relatorios"
               element={

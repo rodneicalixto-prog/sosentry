@@ -1,7 +1,10 @@
 const { randomUUID } = require('crypto');
 const prisma = require('../lib/prisma');
 
-const CHAVES = ['evo_url', 'evo_key', 'evo_instance', 'evo_responsavel'];
+const CHAVES = [
+  'evo_url', 'evo_key', 'evo_instance', 'evo_responsavel',
+  'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from',
+];
 
 // Cache simples com TTL de 60s para evitar N×4 queries por evento de notificação
 let _cache = null;
@@ -14,6 +17,11 @@ function _envMap() {
     evo_key:         process.env.EVOLUTION_API_KEY,
     evo_instance:    process.env.EVOLUTION_INSTANCE,
     evo_responsavel: process.env.WHATSAPP_RESPONSAVEL,
+    smtp_host:       process.env.SMTP_HOST,
+    smtp_port:       process.env.SMTP_PORT,
+    smtp_user:       process.env.SMTP_USER,
+    smtp_pass:       process.env.SMTP_PASS,
+    smtp_from:       process.env.SMTP_FROM,
   };
 }
 

@@ -28,6 +28,43 @@ exports.salvarConfiguracoes = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
+// ─── Configurações genéricas por chave ───────────────────────────────────────
+
+const CHAVES_PERMITIDAS = [
+  'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from',
+]
+
+exports.getChave = async (req, res, next) => {
+  try {
+    const { chave } = req.params
+    if (!CHAVES_PERMITIDAS.includes(chave)) return res.status(400).json({ error: 'Chave inválida' })
+    const valor = await cfgSvc.get(chave) || ''
+    const safe = chave === 'smtp_pass' && valor ? '********' : valor
+    res.json({ chave, valor: safe })
+  } catch (e) { next(e) }
+}
+
+exports.setChave = async (req, res, next) => {
+  try {
+    const { chave } = req.params
+    if (!CHAVES_PERMITIDAS.includes(chave)) return res.status(400).json({ error: 'Chave inválida' })
+    const { valor } = req.body
+    if (chave === 'smtp_pass' && valor === '********') return res.json({ ok: true })
+    await cfgSvc.set(chave, String(valor || '').trim())
+    res.json({ ok: true })
+  } catch (e) { next(e) }
+}
+
+exports.testarSMTP = async (req, res, next) => {
+  try {
+    const { destinatario } = req.body
+    if (!destinatario) return res.status(400).json({ error: 'Destinatário obrigatório' })
+    const emailSvc = require('../services/email.service')
+    await emailSvc.enviarTeste(destinatario)
+    res.json({ ok: true })
+  } catch (e) { next(e) }
+}
+
 // ─── Notificações por Setor ───────────────────────────────────────────────────
 
 exports.listarSetores = async (req, res, next) => {
@@ -39,7 +76,7 @@ exports.listarSetores = async (req, res, next) => {
 
 exports.criarSetor = async (req, res, next) => {
   try {
-    const { nome, telefone, criterioTipo, criterioValor, eventos } = req.body;
+    const { nome, telefone, email, criterioTipo, criterioValor, eventos } = req.body;
     if (!nome?.trim())          return res.status(400).json({ error: 'Nome obrigatório' });
     if (!telefone?.trim())      return res.status(400).json({ error: 'Telefone obrigatório' });
     if (!criterioTipo?.trim())  return res.status(400).json({ error: 'Tipo de critério obrigatório' });
@@ -51,6 +88,7 @@ exports.criarSetor = async (req, res, next) => {
       data: {
         nome: nome.trim(),
         telefone: telefone.replace(/\D/g, ''),
+        email: email?.trim() || null,
         criterioTipo: criterioTipo.trim(),
         criterioValor: criterioValor.trim().toLowerCase(),
         eventos,
@@ -64,10 +102,11 @@ exports.criarSetor = async (req, res, next) => {
 exports.atualizarSetor = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { nome, telefone, criterioTipo, criterioValor, eventos, ativo } = req.body;
+    const { nome, telefone, email, criterioTipo, criterioValor, eventos, ativo } = req.body;
     const data = {};
     if (nome          !== undefined) data.nome          = nome.trim();
     if (telefone      !== undefined) data.telefone      = telefone.replace(/\D/g, '');
+    if (email         !== undefined) data.email         = email?.trim() || null;
     if (criterioTipo  !== undefined) data.criterioTipo  = criterioTipo.trim();
     if (criterioValor !== undefined) data.criterioValor = criterioValor.trim().toLowerCase();
     if (eventos       !== undefined) data.eventos       = eventos;

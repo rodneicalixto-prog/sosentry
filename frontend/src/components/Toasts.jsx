@@ -1,19 +1,46 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { LogIn, LogOut, X } from 'lucide-react'
+import { LogIn, LogOut, AlertTriangle, X } from 'lucide-react'
 import { useRealtimeCtx } from '../contexts/RealtimeContext'
 
 const DURACAO_MS = 6000
+const DURACAO_ALERTA_MS = 12000 // alertas de NF ficam mais tempo
 
 function Toast({ notif, onFechar }) {
+  const nfAlerta = notif.tipo === 'nf_nao_programada'
+  const duracao = nfAlerta ? DURACAO_ALERTA_MS : DURACAO_MS
   const [saindo, setSaindo] = useState(false)
 
   useEffect(() => {
-    const t1 = setTimeout(() => setSaindo(true), DURACAO_MS - 400)
-    const t2 = setTimeout(() => onFechar(notif.id), DURACAO_MS)
+    const t1 = setTimeout(() => setSaindo(true), duracao - 400)
+    const t2 = setTimeout(() => onFechar(notif.id), duracao)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [notif.id, onFechar])
 
   const entrada = notif.tipo === 'entrada'
+
+  if (nfAlerta) {
+    const nfe = notif.dados?.nfe
+    return (
+      <div className={`flex items-start gap-3 w-80 bg-white shadow-xl rounded-xl border-l-4 border-red-500 p-4 transition-all duration-300 ${saindo ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+          <AlertTriangle className="w-4 h-4 text-red-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold uppercase tracking-wide text-red-700">🚨 NF sem Agendamento</p>
+          <p className="text-sm font-semibold text-gray-900 mt-0.5">
+            {nfe ? `${nfe.modelo} nº ${nfe.numeroNF}` : 'Entrega não programada'}
+          </p>
+          {nfe && <p className="text-xs text-gray-500 mt-0.5">CNPJ: {nfe.cnpjFmt}</p>}
+          {notif.dados?.empresa && <p className="text-xs text-gray-500">{notif.dados.empresa.nome}</p>}
+          <p className="text-xs text-gray-400 mt-1">Faturamento notificado · {new Date(notif.ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+        </div>
+        <button onClick={() => { setSaindo(true); setTimeout(() => onFechar(notif.id), 300) }}
+          className="flex-shrink-0 text-gray-300 hover:text-gray-500 -mt-0.5 -mr-0.5 p-0.5 rounded">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div

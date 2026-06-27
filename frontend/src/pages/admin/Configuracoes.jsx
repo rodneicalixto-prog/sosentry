@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import {
   Settings, MessageCircle, QrCode, RefreshCw, LogOut, Send,
   Bell, Plus, Pencil, Trash2, Check, X, ToggleLeft, ToggleRight,
-  DoorOpen, ShieldCheck, UserX, UserCheck, Users,
+  DoorOpen, ShieldCheck, UserX, UserCheck, Users, Mail, KeyRound, Eye, EyeOff, Copy,
 } from 'lucide-react'
 import api from '../../api/client'
 import { useAuth } from '../../contexts/AuthContext'
@@ -214,10 +214,16 @@ function AbaConexaoQR() {
 
 // ─── Aba 3: Notificações por Setor ───────────────────────────────────────────
 
-const SETOR_VAZIO = { nome: '', telefone: '', criterioTipo: 'tipoOperacao', criterioValor: '', eventos: ['entrada'] }
+const SETOR_EVENTOS = [
+  { key: 'entrada',           label: 'Entrada de veículo' },
+  { key: 'saida',             label: 'Saída de veículo' },
+  { key: 'nf_nao_programada', label: 'NF sem agendamento (Faturamento)' },
+]
+
+const SETOR_VAZIO = { nome: '', telefone: '', email: '', criterioTipo: 'tipoOperacao', criterioValor: '', eventos: ['entrada'] }
 
 function SetorForm({ inicial, onSalvar, onCancelar }) {
-  const [form, setForm] = useState(inicial || SETOR_VAZIO)
+  const [form, setForm] = useState(inicial ? { email: '', ...inicial } : SETOR_VAZIO)
   function toggleEvento(ev) {
     setForm(f => ({ ...f, eventos: f.eventos.includes(ev) ? f.eventos.filter(e => e !== ev) : [...f.eventos, ev] }))
   }
@@ -227,13 +233,18 @@ function SetorForm({ inicial, onSalvar, onCancelar }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Setor</label>
-          <input className={input} placeholder="ex: Logística, Recebimento…"
+          <input className={input} placeholder="ex: Faturamento, Logística…"
             value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp (com DDI+DDD)</label>
           <input className={input} placeholder="5511999999999"
             value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">E-mail do setor <span className="text-gray-400 font-normal">(para alertas)</span></label>
+          <input className={input} type="email" placeholder="faturamento@empresa.com.br"
+            value={form.email || ''} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Critério</label>
@@ -251,11 +262,11 @@ function SetorForm({ inicial, onSalvar, onCancelar }) {
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Notificar em</label>
-        <div className="flex gap-3">
-          {['entrada', 'saida'].map(ev => (
-            <label key={ev} className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.eventos.includes(ev)} onChange={() => toggleEvento(ev)} className="w-4 h-4 rounded text-blue-600" />
-              <span className="text-sm">{ev === 'entrada' ? 'Entrada' : 'Saída'}</span>
+        <div className="flex flex-wrap gap-3">
+          {SETOR_EVENTOS.map(ev => (
+            <label key={ev.key} className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={form.eventos.includes(ev.key)} onChange={() => toggleEvento(ev.key)} className="w-4 h-4 rounded text-blue-600" />
+              <span className="text-sm">{ev.label}</span>
             </label>
           ))}
         </div>
@@ -339,16 +350,17 @@ function AbaSetores() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                     {s.ativo ? 'Ativo' : 'Inativo'}
                   </span>
-                  {s.eventos.map(ev => (
-                    <span key={ev} className={`text-xs px-2 py-0.5 rounded-full font-medium ${ev === 'entrada' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                      {ev === 'entrada' ? 'Entrada' : 'Saída'}
-                    </span>
-                  ))}
+                  {s.eventos.map(ev => {
+                    const evCfg = SETOR_EVENTOS.find(e => e.key === ev)
+                    const cor = ev === 'entrada' ? 'bg-blue-100 text-blue-700' : ev === 'nf_nao_programada' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                    return <span key={ev} className={`text-xs px-2 py-0.5 rounded-full font-medium ${cor}`}>{evCfg?.label || ev}</span>
+                  })}
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
                   <span className="font-medium text-gray-600">{labelCriterio(s.criterioTipo)}:</span>{' '}
                   <code className="bg-gray-100 px-1 rounded text-xs">{s.criterioValor === '*' ? 'qualquer' : s.criterioValor}</code>
                   {' · '}📱 {s.telefone}
+                  {s.email && <>{' · '}✉️ {s.email}</>}
                 </p>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
@@ -871,11 +883,277 @@ function AbaContatos() {
   )
 }
 
+// ─── Aba Email (SMTP) ─────────────────────────────────────────────────────────
+
+const SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from']
+
+function AbaEmail() {
+  const [form, setForm] = useState({ smtp_host: '', smtp_port: '587', smtp_user: '', smtp_pass: '', smtp_from: '' })
+  const [mostrarSenha, setMostrarSenha] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+  const [testando, setTestando] = useState(false)
+  const [emailTeste, setEmailTeste] = useState('')
+  const [fb, setFb] = useState(null)
+
+  useEffect(() => {
+    Promise.all(SMTP_KEYS.map(k => api.get(`/api/configuracoes/${k}`).then(r => [k, r.data.valor || '']).catch(() => [k, ''])))
+      .then(entries => setForm(Object.fromEntries(entries)))
+  }, [])
+
+  useEffect(() => { if (!fb) return; const t = setTimeout(() => setFb(null), 5000); return () => clearTimeout(t) }, [fb])
+
+  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  async function salvar(e) {
+    e.preventDefault(); setSalvando(true)
+    try {
+      await Promise.all(SMTP_KEYS.map(k => api.post(`/api/configuracoes/${k}`, { valor: form[k] })))
+      setFb({ tipo: 'ok', msg: 'Configurações de e-mail salvas com sucesso!' })
+    } catch { setFb({ tipo: 'erro', msg: 'Erro ao salvar configurações.' }) }
+    finally { setSalvando(false) }
+  }
+
+  async function testar() {
+    if (!emailTeste) return setFb({ tipo: 'erro', msg: 'Informe um e-mail para teste.' })
+    setTestando(true)
+    try {
+      await api.post('/api/configuracoes/smtp/teste', { destinatario: emailTeste })
+      setFb({ tipo: 'ok', msg: `E-mail de teste enviado para ${emailTeste}` })
+    } catch (err) {
+      setFb({ tipo: 'erro', msg: err.response?.data?.error || 'Erro ao enviar e-mail de teste.' })
+    } finally { setTestando(false) }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <Mail className="w-5 h-5 text-blue-600" />
+        <h2 className="text-lg font-semibold text-gray-900">Configuração de E-mail (SMTP)</h2>
+      </div>
+      <Feedback fb={fb} />
+      <form onSubmit={salvar} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Servidor SMTP</label>
+            <input className={input} placeholder="smtp.gmail.com" value={form.smtp_host} onChange={set('smtp_host')} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Porta</label>
+            <input className={input} placeholder="587" value={form.smtp_port} onChange={set('smtp_port')} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Usuário</label>
+            <input className={input} placeholder="seu@email.com" value={form.smtp_user} onChange={set('smtp_user')} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+            <div className="relative">
+              <input className={input + ' pr-10'} type={mostrarSenha ? 'text' : 'password'} placeholder="••••••••" value={form.smtp_pass} onChange={set('smtp_pass')} />
+              <button type="button" onClick={() => setMostrarSenha(s => !s)} className="absolute right-2 top-2 text-gray-400 hover:text-gray-600">
+                {mostrarSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">E-mail remetente (From)</label>
+          <input className={input} placeholder="SOS Entry <noreply@suaempresa.com>" value={form.smtp_from} onChange={set('smtp_from')} />
+        </div>
+        <button type="submit" disabled={salvando} className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+          {salvando ? 'Salvando…' : 'Salvar configurações'}
+        </button>
+      </form>
+
+      <div className="mt-6 pt-5 border-t border-gray-100">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Enviar e-mail de teste</h3>
+        <div className="flex gap-2">
+          <input className={input} placeholder="destinatario@teste.com" value={emailTeste} onChange={e => setEmailTeste(e.target.value)} />
+          <button onClick={testar} disabled={testando} className="flex items-center gap-1.5 bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 whitespace-nowrap">
+            <Send className="w-4 h-4" />
+            {testando ? 'Enviando…' : 'Testar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Aba API Keys ─────────────────────────────────────────────────────────────
+
+const ESCOPOS_DISPONIVEIS = [
+  { value: 'agendamentos:ler',    label: 'Agendamentos — Leitura' },
+  { value: 'agendamentos:criar',  label: 'Agendamentos — Criar' },
+  { value: 'agendamentos:aprovar',label: 'Agendamentos — Aprovar' },
+  { value: 'registros:ler',       label: 'Registros — Leitura' },
+  { value: '*',                   label: 'Acesso Total (*)' },
+]
+
+function AbaApiKeys() {
+  const [keys, setKeys] = useState([])
+  const [fb, setFb] = useState(null)
+  const [novaChave, setNovaChave] = useState(null)
+  const [copiado, setCopiado] = useState(false)
+  const [form, setForm] = useState({ nome: '', descricao: '', escopos: ['agendamentos:ler'] })
+  const [criando, setCriando] = useState(false)
+  const [mostrarForm, setMostrarForm] = useState(false)
+
+  const carregar = () => api.get('/api/api-keys').then(({ data }) => setKeys(data)).catch(() => {})
+
+  useEffect(() => { carregar() }, [])
+  useEffect(() => { if (!fb) return; const t = setTimeout(() => setFb(null), 5000); return () => clearTimeout(t) }, [fb])
+
+  function toggleEscopo(v) {
+    setForm(f => {
+      const s = f.escopos.includes(v) ? f.escopos.filter(e => e !== v) : [...f.escopos, v]
+      return { ...f, escopos: s }
+    })
+  }
+
+  async function criar(e) {
+    e.preventDefault()
+    if (!form.nome) return setFb({ tipo: 'erro', msg: 'Informe um nome para a API Key.' })
+    if (!form.escopos.length) return setFb({ tipo: 'erro', msg: 'Selecione pelo menos um escopo.' })
+    setCriando(true)
+    try {
+      const { data } = await api.post('/api/api-keys', form)
+      setNovaChave(data.chave)
+      setForm({ nome: '', descricao: '', escopos: ['agendamentos:ler'] })
+      setMostrarForm(false)
+      carregar()
+      setFb({ tipo: 'ok', msg: 'API Key criada. Copie a chave agora — ela não será exibida novamente.' })
+    } catch (err) {
+      setFb({ tipo: 'erro', msg: err.response?.data?.error || 'Erro ao criar API Key.' })
+    } finally { setCriando(false) }
+  }
+
+  async function revogar(id) {
+    if (!confirm('Revogar esta API Key? A ação não pode ser desfeita.')) return
+    try {
+      await api.delete(`/api/api-keys/${id}`)
+      setFb({ tipo: 'ok', msg: 'API Key revogada.' })
+      carregar()
+    } catch { setFb({ tipo: 'erro', msg: 'Erro ao revogar.' }) }
+  }
+
+  function copiar(chave) {
+    navigator.clipboard.writeText(chave).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000) })
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900">API Keys</h2>
+          </div>
+          <button onClick={() => setMostrarForm(f => !f)} className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+            <Plus className="w-4 h-4" />
+            Nova Key
+          </button>
+        </div>
+        <Feedback fb={fb} />
+
+        {novaChave && (
+          <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+            <p className="text-sm font-semibold text-yellow-800 mb-2">Copie sua chave agora! Ela não será exibida novamente.</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs bg-white border border-yellow-200 rounded px-3 py-2 break-all font-mono">{novaChave}</code>
+              <button onClick={() => copiar(novaChave)} className="flex items-center gap-1 text-yellow-700 hover:text-yellow-900 text-sm font-medium">
+                {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copiado ? 'Copiado' : 'Copiar'}
+              </button>
+            </div>
+            <button onClick={() => setNovaChave(null)} className="mt-2 text-xs text-yellow-600 hover:underline">Fechar</button>
+          </div>
+        )}
+
+        {mostrarForm && (
+          <form onSubmit={criar} className="mb-5 bg-gray-50 rounded-xl p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700">Nova API Key</h3>
+            <input className={input} placeholder="Nome da integração (ex: ERP TOTVS)" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} />
+            <input className={input} placeholder="Descrição (opcional)" value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">Escopos de acesso</p>
+              <div className="space-y-1.5">
+                {ESCOPOS_DISPONIVEIS.map(e => (
+                  <label key={e.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={form.escopos.includes(e.value)} onChange={() => toggleEscopo(e.value)} className="rounded" />
+                    <span className="text-gray-700">{e.label}</span>
+                    <code className="text-xs text-gray-400">{e.value}</code>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" disabled={criando} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                {criando ? 'Criando…' : 'Criar API Key'}
+              </button>
+              <button type="button" onClick={() => setMostrarForm(false)} className="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100">Cancelar</button>
+            </div>
+          </form>
+        )}
+
+        {keys.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">Nenhuma API Key criada.</p>
+        ) : (
+          <div className="space-y-3">
+            {keys.map(k => (
+              <div key={k.id} className="flex items-start justify-between gap-3 border border-gray-100 rounded-xl p-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-800 text-sm">{k.nome}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${k.ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-500'}`}>
+                      {k.ativo ? 'Ativa' : 'Revogada'}
+                    </span>
+                  </div>
+                  {k.descricao && <p className="text-xs text-gray-400 mt-0.5">{k.descricao}</p>}
+                  <code className="text-xs text-gray-500 mt-1 block">…{k.chave}</code>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {(k.escopos || []).map(s => (
+                      <span key={s} className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{s}</span>
+                    ))}
+                  </div>
+                  {k.ultimoUso && <p className="text-xs text-gray-400 mt-1">Último uso: {new Date(k.ultimoUso).toLocaleString('pt-BR')}</p>}
+                </div>
+                {k.ativo && (
+                  <button onClick={() => revogar(k.id)} className="flex items-center gap-1 text-red-500 hover:text-red-700 text-xs font-medium flex-shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                    Revogar
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800">
+        <p className="font-semibold mb-1">Como usar a API</p>
+        <p className="mb-2">Inclua o header <code className="bg-white px-1 rounded">X-API-Key: sua-chave</code> em todas as requisições.</p>
+        <p className="font-medium mb-1">Endpoints disponíveis:</p>
+        <ul className="space-y-0.5 text-xs font-mono">
+          <li>GET  /api/v1/agendamentos</li>
+          <li>GET  /api/v1/agendamentos/:id</li>
+          <li>POST /api/v1/agendamentos</li>
+          <li>POST /api/v1/agendamentos/:id/preencher-nf</li>
+          <li>POST /api/v1/agendamentos/:id/aprovar</li>
+          <li>GET  /api/v1/agendamentos/:id/qrcode</li>
+        </ul>
+      </div>
+    </div>
+  )
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 const ABAS_BASE = [
   { id: 'api',       label: 'Configuração da API',       icon: Settings },
   { id: 'conexao',   label: 'Conexão / QR Code',         icon: MessageCircle },
+  { id: 'email',     label: 'E-mail (SMTP)',              icon: Mail },
+  { id: 'apikeys',   label: 'API Keys',                   icon: KeyRound },
   { id: 'contatos',  label: 'Contatos de Notificação',   icon: Users },
   { id: 'setores',   label: 'Notificações por Setor',    icon: Bell },
   { id: 'portarias', label: 'Portarias',                  icon: DoorOpen },
@@ -911,6 +1189,8 @@ export default function Configuracoes() {
 
       {aba === 'api'        && <AbaConexaoAPI />}
       {aba === 'conexao'    && <AbaConexaoQR />}
+      {aba === 'email'      && <AbaEmail />}
+      {aba === 'apikeys'    && <AbaApiKeys />}
       {aba === 'contatos'   && <AbaContatos />}
       {aba === 'setores'    && <AbaSetores />}
       {aba === 'portarias'  && <AbaPortarias />}
