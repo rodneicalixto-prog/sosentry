@@ -99,10 +99,11 @@ export default function Dashboard() {
   const [loadingLista, setLoadingLista]   = useState(false)
   const [error, setError]         = useState('')
   const [cardAtivo, setCardAtivo] = useState(null)
-  const { notificacoes } = useRealtimeCtx()
+  const { notificacoes, conectado } = useRealtimeCtx()
   const abortResumoRef = useRef(null)
   const abortListaRef  = useRef(null)
   const debounceRef    = useRef(null)
+  const conectadoRef   = useRef(false)
 
   const fetchResumo = useCallback(async () => {
     if (abortResumoRef.current) abortResumoRef.current.abort()
@@ -188,6 +189,39 @@ export default function Dashboard() {
     }, 1500)
     return () => clearTimeout(debounceRef.current)
   }, [notificacoes.length])
+
+  // Re-fetch ao reconectar SSE (eventos perdidos enquanto estava offline)
+  useEffect(() => {
+    if (conectado && !conectadoRef.current) {
+      fetchResumo()
+      if (cardAtivo) {
+        const card = CARDS.find(c => c.id === cardAtivo)
+        const params = typeof card.params === 'function' ? card.params() : card.params
+        fetchLista(params)
+      } else {
+        fetchRecentes()
+      }
+    }
+    conectadoRef.current = conectado
+  }, [conectado])
+
+  // Re-fetch ao voltar pro app (tela desbloqueada, troca de aba)
+  useEffect(() => {
+    function handleVisibility() {
+      if (!document.hidden) {
+        fetchResumo()
+        if (cardAtivo) {
+          const card = CARDS.find(c => c.id === cardAtivo)
+          const params = typeof card.params === 'function' ? card.params() : card.params
+          fetchLista(params)
+        } else {
+          fetchRecentes()
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [cardAtivo, fetchResumo, fetchLista, fetchRecentes])
 
   const handleCardClick = (card) => {
     if (cardAtivo === card.id) {
