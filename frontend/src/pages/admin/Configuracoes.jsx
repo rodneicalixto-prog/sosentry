@@ -663,11 +663,39 @@ const EVENTO_LABELS = {}
 GRUPOS_EVENTOS.forEach(g => g.eventos.forEach(e => { EVENTO_LABELS[e.key] = `${g.grupo}: ${e.label}` }))
 
 function ContatoModal({ contato, onSave, onClose }) {
+  const [usuarioId, setUsuarioId] = useState(contato?.usuarioId || '')
+  const [usuarios, setUsuarios]   = useState([])
   const [nome, setNome]         = useState(contato?.nome     || '')
   const [telefone, setTelefone] = useState((contato?.telefone || '').replace(/^55/, ''))
+  const [setor, setSetor]       = useState(contato?.setor    || '')
   const [eventos, setEventos]   = useState(new Set(contato?.eventos || []))
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro]         = useState('')
+
+  useEffect(() => {
+    carregarUsuarios()
+  }, [])
+
+  async function carregarUsuarios() {
+    try {
+      const { data } = await api.get('/api/users?limit=500')
+      setUsuarios(data.users || [])
+    } catch(e) {
+      console.warn('Erro ao carregar usuários:', e.message)
+    }
+  }
+
+  function handleUsuarioChange(uid) {
+    setUsuarioId(uid)
+    if (uid) {
+      const usuario = usuarios.find(u => u.id === uid)
+      if (usuario) {
+        setNome(usuario.nome || '')
+        setTelefone(usuario.telefone ? usuario.telefone.replace(/^55/, '') : '')
+        setSetor(usuario.setor || '')
+      }
+    }
+  }
 
   function toggleEvento(key) {
     setEventos(prev => {
@@ -694,7 +722,14 @@ function ContatoModal({ contato, onSave, onClose }) {
     setSalvando(true); setErro('')
     try {
       const telFull = telefone ? '55' + telefone.replace(/\D/g, '') : ''
-      const payload = { nome, telefone: telFull, eventos: [...eventos], ativo: contato?.ativo ?? true }
+      const payload = {
+        nome,
+        telefone: telFull,
+        setor: setor || null,
+        usuarioId: usuarioId || null,
+        eventos: [...eventos],
+        ativo: contato?.ativo ?? true
+      }
       if (contato?.id) {
         await api.patch(`/api/contatos-notificacao/${contato.id}`, payload)
       } else {
@@ -720,9 +755,32 @@ function ContatoModal({ contato, onSave, onClose }) {
           {erro && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">{erro}</div>}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome / Setor <span className="text-red-500">*</span></label>
-            <input className={input} placeholder="Ex: Segurança, RH, Manutenção..." value={nome} onChange={e => setNome(e.target.value)} />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Vincular a Usuário (Cascata)</label>
+            <select
+              className={input}
+              value={usuarioId}
+              onChange={e => handleUsuarioChange(e.target.value)}
+            >
+              <option value="">Selecionar usuário...</option>
+              {usuarios.map(u => (
+                <option key={u.id} value={u.id}>
+                  {u.nome} {u.setor ? `(${u.setor})` : ''}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Ao selecionar um usuário, nome, setor e telefone serão preenchidos automaticamente</p>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nome <span className="text-red-500">*</span></label>
+            <input className={input} placeholder="Ex: João Silva" value={nome} onChange={e => setNome(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Setor</label>
+            <input className={input} placeholder="Ex: Segurança, RH, Manutenção..." value={setor} onChange={e => setSetor(e.target.value)} />
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp <span className="text-red-500">*</span></label>
             <div className="flex">

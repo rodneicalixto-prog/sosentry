@@ -68,6 +68,25 @@ exports.submeter = async (req, res, next) => {
       ? `/uploads/nf/${req.file.filename}`
       : null;
 
+    // Auto-criar pré-cadastro em Empresa se CNPJ fornecido
+    let empresaId = ag.empresaId;
+    if (cnpj && !ag.empresaId) {
+      try {
+        const empresaCriada = await prisma.empresa.create({
+          data: {
+            nome: empresa || 'Sem nome',
+            cnpj: cnpj.trim(),
+            email: emailEmpresa || '',
+            whatsapp: telefoneMotorista || '',
+            observacoes: `Pré-cadastro automático via NF #${numeroNF}`,
+          },
+        });
+        empresaId = empresaCriada.id;
+      } catch (err) {
+        console.warn('[Auto-empresa] erro ao criar pré-cadastro:', err.message);
+      }
+    }
+
     const updated = await prisma.agendamento.update({
       where: { id: ag.id },
       data: {
@@ -80,6 +99,10 @@ exports.submeter = async (req, res, next) => {
         dataEntrega: dtEntrega,
         horarioPref,
         observacoes: observacoes || null,
+        razaoSocial: empresa || null,
+        cnpjEmpresa: cnpj || null,
+        liberacaoStatus: 'aguardando',
+        empresaId: empresaId || null,
       },
       include: { portaria: { select: { nome: true } } },
     });

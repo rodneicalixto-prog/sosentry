@@ -57,6 +57,7 @@ model User {
   apiKeys               ApiKey[]
   agendamentosCriados   Agendamento[] @relation("AgendamentoCriador")
   agendamentosAprovados Agendamento[] @relation("AgendamentoAprovador")
+  contatosNotificacao ContatoNotificacao[] @relation("ContatoNotificacao")
   @@map("users")
 }
 model Session {
@@ -195,11 +196,15 @@ model ContatoNotificacao {
   id        String   @id @default(uuid())
   nome      String
   telefone  String
+  setor     String?
+  usuarioId String?  @map("usuario_id")
+  usuario   User?    @relation("ContatoNotificacao", fields: [usuarioId], references: [id], onDelete: SetNull)
   eventos   String[]
   ativo     Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   @@index([ativo])
+  @@index([usuarioId])
   @@map("contatos_notificacao")
 }
 
@@ -277,6 +282,11 @@ model Agendamento {
 
   empresaId       String?           @map("empresa_id")
   empresaCad      Empresa?          @relation("AgendamentoEmpresaId", fields: [empresaId], references: [id])
+
+  razaoSocial     String?           @map("razao_social")
+  cnpjEmpresa     String?           @map("cnpj_empresa")
+  liberacaoStatus String            @default("aguardando") @map("liberacao_status")
+  liberadoEm      DateTime?         @map("liberado_em")
 
   criadoEm        DateTime          @default(now()) @map("criado_em")
   atualizadoEm    DateTime          @updatedAt @map("atualizado_em")

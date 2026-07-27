@@ -19,6 +19,7 @@ import {
   QrCode,
   BarChart3,
   Building2,
+  Clock,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import AlterarSenhaModal from './AlterarSenhaModal'
@@ -36,6 +37,7 @@ const NAV = [
 const ADMIN_NAV = [
   { to: '/admin/agendamentos',      label: 'Agendamentos',   icon: Truck,      minRole: 'supervisor' },
   { to: '/admin/agendamentos-dash', label: 'Dashboard Cargas',icon: BarChart3,  minRole: 'supervisor' },
+  { to: '/admin/fila-liberacao',    label: 'Fila de Liberação',icon: Clock,     minRole: 'supervisor' },
   { to: '/admin/empresas',          label: 'Fornecedores',   icon: Building2,  minRole: 'admin' },
   { to: '/admin/relatorios',    label: 'Relatórios',    icon: BarChart2, minRole: 'admin' },
   { to: '/admin/usuarios',      label: 'Usuários',      icon: Users,     minRole: 'admin' },

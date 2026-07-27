@@ -29,6 +29,7 @@ import NovoAgendamento from './pages/admin/NovoAgendamento'
 import AgendamentoDetalhe from './pages/admin/AgendamentoDetalhe'
 import AgendamentosDash from './pages/admin/AgendamentosDash'
 import Empresas from './pages/admin/Empresas'
+import FilaLiberacao from './pages/admin/FilaLiberacao'
 import FormularioPublico from './pages/publico/FormularioPublico'
 import ValidarQR from './pages/ValidarQR'
 
@@ -141,6 +142,14 @@ export default function App() {
               element={
                 <ProtectedRoute minRole="admin">
                   <Webhooks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/fila-liberacao"
+              element={
+                <ProtectedRoute minRole="supervisor">
+                  <FilaLiberacao />
                 </ProtectedRoute>
               }
             />

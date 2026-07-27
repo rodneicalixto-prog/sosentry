@@ -10,22 +10,49 @@ function validarTelefone(tel) {
 
 exports.listar = async (req, res, next) => {
   try {
-    const contatos = await prisma.contatoNotificacao.findMany({ orderBy: { nome: 'asc' } });
+    const contatos = await prisma.contatoNotificacao.findMany({
+      include: { usuario: { select: { id: true, nome: true, setor: true, telefone: true } } },
+      orderBy: { nome: 'asc' }
+    });
     res.json(contatos);
   } catch(e) { next(e); }
 };
 
 exports.criar = async (req, res, next) => {
   try {
-    const { nome, telefone, eventos = [], ativo = true } = req.body;
+    const { nome, telefone, eventos = [], ativo = true, usuarioId, setor } = req.body;
     if (!nome?.trim())      return res.status(400).json({ error: 'Nome obrigatório' });
-    if (!telefone?.trim())  return res.status(400).json({ error: 'Telefone obrigatório' });
-    if (!validarTelefone(telefone)) return res.status(400).json({ error: 'Telefone inválido (10–15 dígitos)' });
     if (!Array.isArray(eventos))    return res.status(400).json({ error: 'Eventos deve ser um array' });
     const eventosValidos = eventos.filter(e => EVENTOS_VALIDOS.includes(e));
 
+    // Se usuarioId é fornecido, buscar dados do usuário
+    let telefoneUsar = telefone?.trim() || '';
+    let setorUsar = setor?.trim() || '';
+
+    if (usuarioId) {
+      const usuario = await prisma.user.findUnique({
+        where: { id: usuarioId },
+        select: { nome: true, telefone: true, setor: true }
+      });
+      if (!usuario) return res.status(400).json({ error: 'Usuário não encontrado' });
+
+      telefoneUsar = usuario.telefone || telefone?.trim() || '';
+      setorUsar = usuario.setor || setor?.trim() || '';
+    }
+
+    if (!telefoneUsar?.trim()) return res.status(400).json({ error: 'Telefone obrigatório' });
+    if (!validarTelefone(telefoneUsar)) return res.status(400).json({ error: 'Telefone inválido (10–15 dígitos)' });
+
     const contato = await prisma.contatoNotificacao.create({
-      data: { nome: nome.trim(), telefone: telefone.trim(), eventos: eventosValidos, ativo: !!ativo }
+      data: {
+        nome: nome.trim(),
+        telefone: telefoneUsar,
+        setor: setorUsar || null,
+        usuarioId: usuarioId || null,
+        eventos: eventosValidos,
+        ativo: !!ativo
+      },
+      include: { usuario: { select: { id: true, nome: true, setor: true, telefone: true } } }
     });
     res.status(201).json(contato);
   } catch(e) { next(e); }
@@ -37,17 +64,36 @@ exports.atualizar = async (req, res, next) => {
     const existe = await prisma.contatoNotificacao.findUnique({ where: { id }, select: { id: true } });
     if (!existe) return res.status(404).json({ error: 'Contato não encontrado' });
 
-    const { nome, telefone, eventos, ativo } = req.body;
+    const { nome, telefone, eventos, ativo, usuarioId, setor } = req.body;
     const data = {};
     if (nome      !== undefined) data.nome      = nome.trim();
-    if (telefone  !== undefined) {
+    if (usuarioId !== undefined) {
+      if (usuarioId) {
+        const usuario = await prisma.user.findUnique({
+          where: { id: usuarioId },
+          select: { nome: true, telefone: true, setor: true }
+        });
+        if (!usuario) return res.status(400).json({ error: 'Usuário não encontrado' });
+        data.usuarioId = usuarioId;
+        data.telefone = usuario.telefone || telefone?.trim() || '';
+        data.setor = usuario.setor || setor?.trim() || '';
+      } else {
+        data.usuarioId = null;
+      }
+    }
+    if (telefone  !== undefined && !usuarioId) {
       if (!validarTelefone(telefone)) return res.status(400).json({ error: 'Telefone inválido' });
       data.telefone = telefone.trim();
     }
+    if (setor !== undefined && !usuarioId) data.setor = setor?.trim() || null;
     if (eventos   !== undefined) data.eventos = Array.isArray(eventos) ? eventos.filter(e => EVENTOS_VALIDOS.includes(e)) : [];
     if (ativo     !== undefined) data.ativo   = !!ativo;
 
-    const updated = await prisma.contatoNotificacao.update({ where: { id }, data });
+    const updated = await prisma.contatoNotificacao.update({
+      where: { id },
+      data,
+      include: { usuario: { select: { id: true, nome: true, setor: true, telefone: true } } }
+    });
     res.json(updated);
   } catch(e) { next(e); }
 };

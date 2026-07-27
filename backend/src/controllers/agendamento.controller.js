@@ -305,3 +305,80 @@ exports.concluir = async (req, res, next) => {
     res.json(updated);
   } catch (e) { next(e); }
 };
+
+// ─── Fila de Liberação (clientes aguardando aprovação) ────────────────────────
+
+exports.filaLiberacao = async (req, res, next) => {
+  try {
+    const { page = 1, departamento, busca } = req.query;
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+    const skip = (Number(page) - 1) * limit;
+    const where = { liberacaoStatus: 'aguardando' };
+
+    if (departamento) where.departamento = departamento;
+    if (busca) {
+      const term = busca.trim();
+      where.OR = [
+        { empresa: { contains: term, mode: 'insensitive' } },
+        { cnpjEmpresa: { contains: term, mode: 'insensitive' } },
+        { motorista: { contains: term, mode: 'insensitive' } },
+        { placa: { contains: term, mode: 'insensitive' } },
+        { numeroNF: { contains: term, mode: 'insensitive' } },
+      ];
+    }
+
+    const [agendamentos, total] = await Promise.all([
+      prisma.agendamento.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { criadoEm: 'asc' },
+        include: {
+          criadoPor: { select: { nome: true } },
+          portaria: { select: { nome: true, numero: true } },
+          empresaCad: { select: { id: true, nome: true, cnpj: true } },
+        },
+      }),
+      prisma.agendamento.count({ where }),
+    ]);
+
+    res.json({
+      agendamentos,
+      total,
+      page: Number(page),
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (e) { next(e); }
+};
+
+// ─── Aprovar/Liberar cliente da fila ──────────────────────────────────────────
+
+exports.aprovarLiberacao = async (req, res, next) => {
+  try {
+    const ag = await prisma.agendamento.findUnique({ where: { id: req.params.id } });
+    if (!ag) return res.status(404).json({ error: 'Agendamento não encontrado' });
+    if (ag.liberacaoStatus !== 'aguardando')
+      return res.status(400).json({ error: 'Agendamento não está aguardando liberação' });
+
+    const updated = await prisma.agendamento.update({
+      where: { id: ag.id },
+      data: {
+        liberacaoStatus: 'aprovado',
+        liberadoEm: new Date(),
+      },
+      include: {
+        portaria: { select: { nome: true } },
+      },
+    });
+
+    sseSvc.broadcast('cliente_liberado_fila', {
+      agendamentoId: updated.id,
+      empresa: updated.empresa,
+      cnpj: updated.cnpjEmpresa,
+      liberadoPor: req.user.nome || req.user.login,
+    });
+    webhookSvc.disparar('cliente.liberado_fila', updated).catch(() => {});
+
+    res.json(updated);
+  } catch (e) { next(e); }
+};
