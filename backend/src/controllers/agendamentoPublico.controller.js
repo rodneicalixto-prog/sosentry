@@ -68,20 +68,36 @@ exports.submeter = async (req, res, next) => {
       ? `/uploads/nf/${req.file.filename}`
       : null;
 
-    // Auto-criar pré-cadastro em Empresa se CNPJ fornecido
+    // Pré-cadastro automático em Empresa quando o fornecedor informa CNPJ.
+    // Reaproveita o cadastro existente se já houver um com o mesmo CNPJ —
+    // sem isso cada NF do mesmo fornecedor criaria uma Empresa duplicada
+    // (cnpj não tem constraint de unicidade).
     let empresaId = ag.empresaId;
     if (cnpj && !ag.empresaId) {
       try {
-        const empresaCriada = await prisma.empresa.create({
-          data: {
-            nome: empresa || 'Sem nome',
-            cnpj: cnpj.trim(),
-            email: emailEmpresa || '',
-            whatsapp: telefoneMotorista || '',
-            observacoes: `Pré-cadastro automático via NF #${numeroNF}`,
-          },
-        });
-        empresaId = empresaCriada.id;
+        const cnpjDigitos = cnpj.replace(/\D/g, '');
+        // Compara só os dígitos: o CNPJ pode estar salvo com ou sem máscara.
+        const existentes = cnpjDigitos
+          ? await prisma.$queryRaw`
+              SELECT id FROM empresas
+               WHERE regexp_replace(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = ${cnpjDigitos}
+               LIMIT 1`
+          : [];
+
+        if (existentes.length > 0) {
+          empresaId = existentes[0].id;
+        } else {
+          const empresaCriada = await prisma.empresa.create({
+            data: {
+              nome: empresa || 'Sem nome',
+              cnpj: cnpj.trim(),
+              email: emailEmpresa || '',
+              whatsapp: telefoneMotorista || '',
+              observacoes: `Pré-cadastro automático via NF #${numeroNF}`,
+            },
+          });
+          empresaId = empresaCriada.id;
+        }
       } catch (err) {
         console.warn('[Auto-empresa] erro ao criar pré-cadastro:', err.message);
       }
