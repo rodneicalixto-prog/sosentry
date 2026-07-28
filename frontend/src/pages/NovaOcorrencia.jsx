@@ -6,10 +6,7 @@ import {
   Phone, FileText, Image as ImageIcon, Mic, Video, X, Upload
 } from 'lucide-react'
 import api from '../api/client'
-
-const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL  || 'https://yshvniyhtnyhnjcecbft.supabase.co'
-const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzaHZuaXlodG55aG5qY2VjYmZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MDcyMTMsImV4cCI6MjA5MjI4MzIxM30.0tYb9047OInZtAW3SAi2zS-m7sudE3Ui-HjZxIfj87c'
-const BUCKET = 'fotos-saida'
+import { uploadAnexo as uploadAnexoStorage } from '../lib/supabaseStorage'
 
 const CATEGORIAS = [
   { label: 'Segurança do Trabalho', icon: HardHat,       cor: 'yellow', tipos: ['Acidente de trabalho','Quase-acidente (near miss)','EPI não utilizado','Condição insegura','Incêndio / Explosão','Derramamento de produto químico','Outro'] },
@@ -55,19 +52,7 @@ function testemunha() { return { nome: '', contato: '', observacao: '' } }
 function acionamento() { return { servico: '', horarioAcionamento: '', horarioChegada: '', protocolo: '', viatura: '' } }
 
 async function uploadAnexo(file) {
-  const ext  = file.name.split('.').pop() || 'bin'
-  const nome = `ocorrencias/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const resp = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${nome}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${SUPABASE_ANON}`, 'Content-Type': file.type || 'application/octet-stream' },
-    body: file,
-  })
-  if (!resp.ok) throw new Error(`Upload falhou: ${resp.status}`)
-  return {
-    nome: file.name,
-    url:  `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${nome}`,
-    tipo: file.type.startsWith('image/') ? 'foto' : file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'documento',
-  }
+  return uploadAnexoStorage(file, 'ocorrencias')
 }
 
 export default function NovaOcorrencia() {

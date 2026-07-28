@@ -92,8 +92,9 @@ Arquivo: `backend/.env` — copiar de `backend/.env.example`
 
 | Variável | Obrigatória | Descrição |
 |----------|:-----------:|-----------|
-| `DATABASE_URL` | ✅ | Connection string Supabase via pooler (pgbouncer) |
-| `DIRECT_URL` | ✅ | Connection string direta (para migrations Prisma) |
+| `DATABASE_URL` | ✅ | Connection string Supabase via pooler, porta 6543 (pgbouncer) |
+| `DIRECT_URL` | ✅ | Connection string via session pooler, porta 5432 (migrations Prisma) |
+| `SUPABASE_URL` | ✅ | URL do projeto — valida as URLs de foto do Storage |
 | `JWT_SECRET` | ✅ | Secret do access token JWT |
 | `JWT_REFRESH_SECRET` | ✅ | Secret do refresh token |
 | `FRONTEND_URL` | ✅ | URL do frontend (para CORS) |
@@ -110,12 +111,31 @@ Arquivo: `backend/.env` — copiar de `backend/.env.example`
 > **Atenção:** se a senha contiver `@`, substitua por `%40` na URL.
 
 ```
-# Pooler — para queries normais
-DATABASE_URL="postgresql://postgres.SEU_REF:SUA_SENHA@aws-0-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+# Transaction pooler (6543) — para queries normais
+DATABASE_URL="postgresql://postgres.SEU_REF:SUA_SENHA@aws-1-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
 
-# Direto — para migrations
-DIRECT_URL="postgresql://postgres:SUA_SENHA@db.SEU_REF.supabase.co:5432/postgres"
+# Session pooler (5432) — para migrations
+DIRECT_URL="postgresql://postgres.SEU_REF:SUA_SENHA@aws-1-sa-east-1.pooler.supabase.com:5432/postgres"
 ```
+
+> A conexão direta (`db.SEU_REF.supabase.co:5432`) **não funciona** em projetos
+> novos: o Supabase só oferece IPv6 nela, e o IPv4 é add-on pago. Use o pooler
+> nas duas URLs. Confira o host (`aws-0` ou `aws-1`) no painel em
+> **Project Settings → Database → Connection string**.
+
+### Storage (upload de fotos e anexos)
+
+O frontend envia arquivos direto para o bucket `fotos-saida` usando a chave
+anon. Como o Vite injeta variáveis em **build time**, elas precisam estar em
+`infra/.env` **antes** do `docker compose build`:
+
+```env
+SUPABASE_URL=https://SEU_REF.supabase.co
+SUPABASE_ANON_KEY=sua_anon_key
+```
+
+Copie de `infra/.env.example`. O bucket `fotos-saida` precisa existir no
+projeto (Storage → New bucket, marcado como público).
 
 ---
 

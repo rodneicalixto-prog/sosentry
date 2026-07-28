@@ -206,7 +206,12 @@ exports.saida = async (req, res, next) => {
   try {
     const { protocolo } = req.params;
     const { lacreImageUrl, fotoCarroceriaUrl, obsOcorrencia, obsAnexos } = req.body || {};
-    const FOTO_PREFIX = 'https://yshvniyhtnyhnjcecbft.supabase.co/storage/v1/object/public/fotos-saida/';
+    // Só aceitamos URLs do nosso próprio bucket — impede que um cliente grave
+    // uma URL arbitrária no registro. O projeto vem do ambiente para não ficar
+    // preso a um ref específico do Supabase.
+    if (!process.env.SUPABASE_URL)
+      return res.status(500).json({ error: 'SUPABASE_URL não configurada no servidor' })
+    const FOTO_PREFIX = `${process.env.SUPABASE_URL.replace(/\/$/, '')}/storage/v1/object/public/fotos-saida/`;
     if (!lacreImageUrl)
       return res.status(400).json({ error: 'Foto do lacre obrigatória' })
     if (typeof lacreImageUrl !== 'string' || !lacreImageUrl.startsWith(FOTO_PREFIX))

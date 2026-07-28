@@ -5,21 +5,10 @@ import {
 } from 'lucide-react'
 import api from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
-
-const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL  || 'https://yshvniyhtnyhnjcecbft.supabase.co'
-const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzaHZuaXlodG55aG5qY2VjYmZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MDcyMTMsImV4cCI6MjA5MjI4MzIxM30.0tYb9047OInZtAW3SAi2zS-m7sudE3Ui-HjZxIfj87c'
-const BUCKET = 'fotos-saida'
+import { uploadArquivo } from '../lib/supabaseStorage'
 
 async function uploadFile(file, folder) {
-  const ext  = file.name.split('.').pop() || 'bin'
-  const nome = `universidade/${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const resp = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${nome}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${SUPABASE_ANON}`, 'Content-Type': file.type || 'application/octet-stream' },
-    body: file,
-  })
-  if (!resp.ok) throw new Error(`Upload falhou: ${resp.status}`)
-  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${nome}`
+  return uploadArquivo(file, `universidade/${folder}`)
 }
 
 function getEmbedUrl(url) {

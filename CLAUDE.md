@@ -8,7 +8,7 @@ Sistema de controle de entrada e saída de veículos em portarias industriais. N
 |--------|-----------|
 | Backend | Node.js 20 + Express 4 |
 | ORM | Prisma 5 + PostgreSQL |
-| Banco | Supabase (projeto `yshvniyhtnyhnjcecbft`, sa-east-1) |
+| Banco | Supabase (PostgreSQL, sa-east-1) |
 | Frontend | React 18 + Vite + Tailwind CSS v3 + React Router v6 + Axios |
 | Tempo real | Server-Sent Events (SSE) — EventSource nativo |
 | WhatsApp | Evolution API (evogo.sosbot.online) |
@@ -134,7 +134,14 @@ SEED_SUPERADMIN_SENHA="sua-senha-forte"
 
 ## Banco de dados
 
-Projeto Supabase: `yshvniyhtnyhnjcecbft` (sa-east-1)
+Projeto Supabase (sa-east-1). O ref do projeto **não é hardcoded** em lugar
+nenhum — vem de `DATABASE_URL`/`SUPABASE_URL` no backend e de
+`VITE_SUPABASE_URL` no build do frontend.
+
+> **Conexão:** projetos novos do Supabase não oferecem mais IPv4 na conexão
+> direta (`db.<ref>.supabase.co:5432`). Use o pooler nas duas URLs:
+> porta **6543** (transaction, com `?pgbouncer=true`) em `DATABASE_URL` e
+> porta **5432** (session) em `DIRECT_URL`.
 
 ### Tabelas
 

@@ -1,26 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { Camera, X, Image as ImageIcon, FolderOpen } from 'lucide-react'
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://yshvniyhtnyhnjcecbft.supabase.co'
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzaHZuaXlodG55aG5qY2VjYmZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MDcyMTMsImV4cCI6MjA5MjI4MzIxM30.0tYb9047OInZtAW3SAi2zS-m7sudE3Ui-HjZxIfj87c'
-const BUCKET = 'fotos-saida'
+import { uploadArquivo } from '../lib/supabaseStorage'
 
 export async function uploadFoto(file) {
-  const ext = file.name.split('.').pop() || 'jpg'
-  const nome = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const resp = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${nome}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      'Content-Type': file.type || 'image/jpeg',
-    },
-    body: file,
-  })
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => '')
-    throw new Error(`Falha no upload: ${resp.status} ${txt}`)
-  }
-  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${nome}`
+  return uploadArquivo(file)
 }
 
 export default function FotoUpload({ label, obrigatorio = false, value, onChange, disabled }) {
