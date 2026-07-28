@@ -27,10 +27,24 @@ Análise do Supabase identificou **3 problemas CRÍTICOS** de segurança:
 Arquivo: `backend/prisma/migrations/20260727000007_fix_security_rls_and_indexes/migration.sql`
 
 **O que foi feito:**
-- ✅ RLS habilitado em 18 tabelas
-- ✅ Políticas básicas de acesso criadas
-- ✅ 7 índices para Foreign Keys adicionados
-- ✅ 6 índices não utilizados removidos
+- ✅ RLS habilitado em 14 tabelas da aplicação
+- ✅ **Nenhuma policy permissiva criada** — anon/authenticated ficam sem acesso
+- ✅ 13 índices para Foreign Keys adicionados
+
+**Por que sem policies:** o backend acessa o banco via Prisma com o papel
+`postgres`, dono das tabelas. No PostgreSQL o dono não é afetado por RLS, então
+a aplicação continua funcionando normalmente. Sem policies, o acesso via
+PostgREST (chaves `anon`/`authenticated`) fica bloqueado — que é exatamente a
+vulnerabilidade apontada. O frontend usa a chave anon apenas para o Storage,
+subsistema separado que não é afetado por policies de tabela.
+
+> Isso torna a "Fase 2" abaixo **opcional**: ela só é necessária se no futuro o
+> frontend passar a ler tabelas direto via PostgREST. Hoje ele não faz isso.
+
+**Índices não utilizados:** os 6 índices apontados pelo linter **não** foram
+removidos. O diagnóstico vem de estatísticas de uso zeradas (banco recém
+restaurado) e vários cobrem filtros reais (busca por placa, ocorrências por
+status/categoria). Reavaliar após semanas de uso real.
 
 **Como aplicar:**
 ```bash
